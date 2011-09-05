@@ -31,7 +31,7 @@ Usage
 	               URL
 
 ### Simple usage with the example application
-Check out the [readme](xcat/blob/master/src/example_application/README.md) to try out XCat with the provided example application.
+Check out the [readme](xcat/blob/master/src/example_application) to try out XCat with the provided example application.
 
 HTTP Postback / doc function
 ----------------------------
