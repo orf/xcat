@@ -10,7 +10,7 @@ Features
 --------
 * Exploits both GET and POST attacks
 * Extracts all nodes, comments, attributes and data from the entire XML document
-* One file, three dependancies ([Python 2.7+](http://www.python.org/download/releases/2.7.2/), [Futures](http://pypi.python.org/pypi/futures/2.1.2) (only if you are not using 3.x) and [cElementTree](http://effbot.org/downloads/#elementtree))
+* One file, three dependencies ([Python 2.7+](http://www.python.org/download/releases/2.7.2/), [Futures](http://pypi.python.org/pypi/futures/2.1.2) (only if you are not using 3.x) and [cElementTree](http://effbot.org/downloads/#elementtree))
 * Parallel requests (adjustable thread pool size)
 * XPath 2.0 supported (with graceful degrading to 1.0)
 * [Regex](http://www.w3.org/TR/xpath-functions/#func-matches) pattern matching to reduce character search space
