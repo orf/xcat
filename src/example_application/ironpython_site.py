@@ -1,3 +1,4 @@
+print "Loading.."
 import clr
 clr.AddReferenceToFile("XQSharp.dll")
 clr.AddReferenceToFile("XQSharp.ExtensionMethods.dll")
@@ -6,6 +7,7 @@ import XQSharp
 import System.Xml
 import BaseHTTPServer
 import cgi
+import sys
 
 page = """
 <html>
@@ -15,7 +17,7 @@ page = """
                 <input type='submit'>
              </form>
 """
-
+print "Loading..."
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     
     def do_GET(self):
@@ -59,10 +61,16 @@ reader_settings.NameTable = settings.NameTable
 dyn_settings.DocumentSet = XQSharp.DocumentSet(resolver, reader_settings)
 dyn_settings.ContextItem = contextItem
 
-'''while True:
-    print HandleQuery(raw_input("Q: "))'''
+if "--shell" in sys.argv:
+    while True:
+        try:
+            print HandleQuery(raw_input("Q: "))
+        except Exception,e:
+            print e
+            
 
 server_addr = ('localhost',80)
 httpd = BaseHTTPServer.HTTPServer(server_addr,
                                   RequestHandler)
+print "Serving...."
 httpd.serve_forever()
