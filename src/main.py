@@ -197,8 +197,8 @@ def _getCharactersHttp(node, payload, name):
     if name:
         node = "name(%s)"%node
     class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
-        #def log_request(self, code='-', size='-'):
-        #    return
+        def log_request(self, code='-', size='-'):
+            return
         
         def do_GET(self):
             query = urlparse.parse_qs(urlparse.urlparse(self.path).query)
