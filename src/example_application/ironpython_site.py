@@ -5,6 +5,7 @@ clr.AddReferenceToFile("XQSharp.ExtensionMethods.dll")
 clr.AddReference('System.Xml')
 import XQSharp
 import System.Xml
+import argparse
 import BaseHTTPServer
 import cgi
 import sys
@@ -42,6 +43,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.wfile.write("<b>Book not found</b>")
 
         self.wfile.write("</body></html>")
+        print "Done..."
 
 def HandleQuery(query):
     return XQSharp.XPath.Compile(query, settings.NameTable).EvaluateToItem(dyn_settings)
@@ -67,10 +69,14 @@ if "--shell" in sys.argv:
             print HandleQuery(raw_input("Q: "))
         except Exception,e:
             print e
-            
 
-server_addr = ('localhost',80)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--port", default=80,dest="port",type=int)
+args = parser.parse_args()
+
+server_addr = ('localhost',args.port)
 httpd = BaseHTTPServer.HTTPServer(server_addr,
                                   RequestHandler)
-print "Serving...."
+print "Serving on port %s"%args.port
 httpd.serve_forever()

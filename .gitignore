@@ -1,3 +1,10 @@
 *.class
 *.pyc
 *.pyo
+
+*.pydevproject
+*.project
+/src/example_application/XQSharp.dll
+/src/example_application/XQSharp.ExtensionMethods.dll
+/src/example_application/XQSharp.ExtensionMethods.xml
+/src/example_application/XQSharp.xml
