@@ -272,12 +272,11 @@ def getCharacters(node, payload, size=None, name=False):
             if not args.lowercase:
                 spaces+=(("[A-Z]",string.uppercase),)
                 
-            spaces+= (("\D",string.digits),
-                      ("\p{P}","""!$%&'()*+,-./_"""),
-                      ("\s"," "))
-            
+            spaces+= ((r"\\D",string.digits),
+                      (r"\\s"," "),
+                      (r"\\p{P}","""!$%&'()*+,-./_"""))
+            #ToDo: Handle quote characters in the if statement + make the regex actually work :<
             for pattern,space in spaces:
-                raw_input("SearchSpace: %s"%searchspace)
                 new_node = node
                 if name:
                     new_node = "name(%s)"%node
@@ -355,7 +354,7 @@ if __name__ == "__main__":
     parser.add_argument("--lowercase", help="Speed up retrieval time by making all text lowercase before searching. Xpath 2.0 only",
                         default=False, dest="lowercase", action="store_true")
     parser.add_argument("--regex", help="Use Regex to reduce the search space of text. Xpath 2.0 only",
-                        default=True, dest="use_regex", action="store_true")
+                        default=False, dest="use_regex", action="store_true")
     parser.add_argument("--connectback", help="Use a clever technique to deliver the XML document data over HTTP to xcat. Requires a public IP address and port listening permissions",
                         action="store_true", dest="connectback")
     parser.add_argument("--connectbackip", help="IP Address to listen on for connectback", action="store", dest="connectback_ip")
@@ -366,18 +365,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if not any([args.false_keyword, args.true_keyword, args.error_keyword]):
-        print "Error: You must supply a false, true or error keyword"
+        sys.stderr.write("Error: You must supply a false, true or error keyword\n")
         sys.exit(1)
 
-    if args.error_keyword:
-        print "In error mode"
-        PayloadMaker.BASE = PayloadMaker.BASE_ERROR
-    
     if args.http_method == "POST":
         if not args.post_argument:
-            print "Error: You must supply some POST arguments if you are making a POST request!"
+            sys.stderr.write("Error: You must supply some POST arguments if you are making a POST request!\n")
             sys.exit(1)
-            
+
+    if args.error_keyword:
+        sys.stderr.write("In error mode\n")
+        PayloadMaker.BASE = PayloadMaker.BASE_ERROR
+
     socket.setdefaulttimeout(args.timeout)
     payloads = PayloadMaker()
     
@@ -393,6 +392,11 @@ if __name__ == "__main__":
         else:
             args.xversion = "1" 
         sys.stderr.write("Detected XPath version %s\n"%float(args.xversion))
+
+    if args.error_keyword and args.xversion == "1":
+            sys.stderr.write("Error based extraction is only available when exploiting targets using XPath 2.0 or higher")
+            sys.exit(1)
+
     
     if args.use_regex and args.xversion == "2":
         if not executeQuery(args.URL, payloads.regex_support, args.true_keyword or args.false_keyword):
