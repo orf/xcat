@@ -43,7 +43,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         print postvars
         if _t:
             try:
-                result = HandleQuery('/bib/book[title="'+ _t + '"]')
+                result = HandleQuery('/lib/book[title="'+ _t + '"]')
             except Exception,e:
                 self.wfile.write("<b>Exception!</b><br/>")
                 self.wfile.write(traceback.format_exc().replace("\n","<br/>"))

