@@ -7,14 +7,15 @@ import XQSharp
 import System.Xml
 import argparse
 import BaseHTTPServer
-import cgi
+import urlparse
 import sys
+import traceback
 
 page = """
 <html>
     <body>
         Book Title:<form action='/' method='POST'>
-                <input type='text' name='title'>
+                <input type='text' name='title' size=50 value="%s">
                 <input type='submit'>
              </form>
 """
@@ -24,23 +25,34 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(page)
+        self.wfile.write(page % "")
         self.wfile.write("</body></html>")
 
     def do_POST(self):
+        length = int(self.headers.getheader('content-length'))
+        postvars = urlparse.parse_qs(self.rfile.read(length), keep_blank_values=1)
+        if "title" in postvars:
+            _t = postvars["title"][0]
+        else:
+            _t = ""
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(page)
-        length = int(self.headers.getheader('content-length'))
-        postvars = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
+        self.wfile.write(page % _t)
+
         print postvars
-        if "title" in postvars:
-            result = HandleQuery("/bib/book[title='"+ postvars["title"][0] + "']")
-            self.wfile.write("<br />")
-            if result:
-                self.wfile.write("<b>Book found</b>")
+        if _t:
+            try:
+                result = HandleQuery('/bib/book[title="'+ _t + '"]')
+            except Exception,e:
+                self.wfile.write("<b>Exception!</b><br/>")
+                self.wfile.write(traceback.format_exc())
             else:
-                self.wfile.write("<b>Book not found</b>")
+                self.wfile.write("<br />")
+                if not args.hide_feedback:
+                    if result:
+                        self.wfile.write("<b>Book found</b>")
+                    else:
+                        self.wfile.write("<b>Book not found</b>")
 
         self.wfile.write("</body></html>")
         print "Done..."
@@ -73,7 +85,9 @@ if "--shell" in sys.argv:
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port", default=80,dest="port",type=int)
+parser.add_argument("--nofeedback", dest="hide_feedback", action="store_true")
 args = parser.parse_args()
+print args
 
 server_addr = ('localhost',args.port)
 httpd = BaseHTTPServer.HTTPServer(server_addr,
