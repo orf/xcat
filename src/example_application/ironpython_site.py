@@ -9,6 +9,7 @@ import argparse
 import BaseHTTPServer
 import urlparse
 import sys
+import cgi
 import traceback
 
 page = """
@@ -37,7 +38,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             _t = ""
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(page % _t)
+        self.wfile.write(page % cgi.escape(_t, quote=True))
 
         print postvars
         if _t:
@@ -45,7 +46,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 result = HandleQuery('/bib/book[title="'+ _t + '"]')
             except Exception,e:
                 self.wfile.write("<b>Exception!</b><br/>")
-                self.wfile.write(traceback.format_exc())
+                self.wfile.write(traceback.format_exc().replace("\n","<br/>"))
             else:
                 self.wfile.write("<br />")
                 if not args.hide_feedback:
