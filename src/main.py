@@ -140,7 +140,7 @@ class PayloadMaker(object):
 
 def countStuff(payload, node, bigstuff=False, getContentLength=True, start=0, end=0):
     if not bigstuff:
-        for i in xrange(start, end or args.search_limit):
+        for i in xrange(start, end or (args.search_limit+1)):
             if executeQuery(args.URL, payload(count=i, node=node)):
                 return i
         return False
@@ -157,7 +157,7 @@ def countStuff(payload, node, bigstuff=False, getContentLength=True, start=0, en
             return 0
         MIN = 0
         MAX = 10
-        for i in xrange(args.step_size+1):
+        for i in xrange(args.step_size):
             if executeQuery(args.URL, p(node=node, min=MIN, max=MAX)):
                 return countStuff(af, node, bigstuff=False, start=MIN, end=MAX)
             MIN+=10
@@ -262,7 +262,7 @@ def getCharacters(node, payload, size=None, name=False):
     searchspace = string.ascii_letters+string.digits#+string.punctuation
     if size and size > 10:
         if args.use_regex and args.xversion == "2":
-            raw_input("using regex")
+            #raw_input("using regex")
             searchspace = ""
             spaces = (("[a-z]",string.lowercase),)
             
@@ -292,7 +292,7 @@ def getCharacters(node, payload, size=None, name=False):
                 size = countContents(payloads.node_name.substitute(node=node))
             else:
                 size = countContents(node)
-
+    #raw_input("Size: %s"%size)
     if not size:
         return _getCharactersSingle(node, payload, searchspace)
     return _getCharactersThreadPool(node, payload, size, searchspace)
