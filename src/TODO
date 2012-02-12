@@ -1,0 +1,5 @@
+To-do list for XCat:
+* Re-write using Twisted
+* Better support for error-based detection (HTTP error codes)
+* codepoints-from-string searching (binary chop?)
+* Better Regex support is a must

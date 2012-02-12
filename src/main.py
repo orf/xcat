@@ -107,8 +107,8 @@ class PayloadMaker(object):
                      "COUNT_CHILDREN":("count($node)=$count",),
                      "NODEVALUE_LENGTH":("string-length($node)=$count",),
                     
-                     "GET_NODENAME":("normalize-unicode(substring(name($node),$count,1),'NFKC')", "='$character'"),
-                     "GET_NODEVALUE":("normalize-unicode(substring($node,$count,1),'NFKC')", "='$character'"),
+                     "GET_NODENAME":("normalize-unicode(substring(name($node),$count,1),'NFKD')", "='$character'"),
+                     "GET_NODEVALUE":("normalize-unicode(substring($node,$count,1),'NFKD')", "='$character'"),
                     
                      "GET_NAME_LENGTH":("string-length(name($node))=$count",),
                      "GET_CONTENT_LENGTH":("(string-length($node) > $min and string-length($node) <= $max)",),
