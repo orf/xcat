@@ -325,7 +325,7 @@ def executeQueryInner(url, payload):
         # Look for an exception
         return args.error_keyword in data
     else:
-        if args.lookup == True:
+        if args.lookup:
             return args.true_keyword in data
         else:
             return not args.false_keyword in data

@@ -1,9 +1,9 @@
 print "Loading.."
 import clr
-clr.AddReferenceToFile("XQSharp.dll")
-clr.AddReferenceToFile("XQSharp.ExtensionMethods.dll")
+clr.AddReferenceToFile("XmlPrime.dll")
+clr.AddReferenceToFile("XmlPrime.ExtensionMethods.dll")
 clr.AddReference('System.Xml')
-import XQSharp
+import XmlPrime
 import System.Xml
 import argparse
 import BaseHTTPServer
@@ -59,21 +59,21 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         print "Done..."
 
 def HandleQuery(query):
-    return XQSharp.XPath.Compile(query, settings.NameTable).EvaluateToItem(dyn_settings)
+    return XmlPrime.XPath.Compile(query, settings.NameTable).EvaluateToItem(dyn_settings)
 
 settings = System.Xml.XmlReaderSettings()
 settings.NameTable = System.Xml.NameTable()
 
 reader = System.Xml.XmlReader.Create("input.xml", settings)
-document = XQSharp.XdmDocument(reader)
+document = XmlPrime.XdmDocument(reader)
 
 contextItem = document.CreateNavigator()
-dyn_settings = XQSharp.DynamicContextSettings()
+dyn_settings = XmlPrime.DynamicContextSettings()
 resolver = System.Xml.XmlUrlResolver()
 reader_settings = System.Xml.XmlReaderSettings()
 
 reader_settings.NameTable = settings.NameTable
-dyn_settings.DocumentSet = XQSharp.DocumentSet(resolver, reader_settings)
+dyn_settings.DocumentSet = XmlPrime.DocumentSet(resolver, reader_settings)
 dyn_settings.ContextItem = contextItem
 
 if "--shell" in sys.argv:
