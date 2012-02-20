@@ -4,5 +4,4 @@ ToDo for XCat 0.5:
      * max_concurrent_connections flag
      * global speed limit?
    - File shell
-   - CWD
-   - HTTP Status code handling for true/false/error conditions
+   - Test HTTP Status code handling

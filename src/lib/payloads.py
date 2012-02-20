@@ -115,12 +115,23 @@ class PayloadMaker(object):
         response.deliverBody(QuickAndDirtyReceiver(body_deferred))
         content = yield body_deferred
 
-        if self.config.error_keyword:
-            defer.returnValue(self.config.error_keyword in content)
-        elif self.config.lookup:
-            defer.returnValue(self.config.true_keyword in content)
+
+        if any([self.config.true_code, self.config.error_code, self.config.fail_code]):
+            # Doing it via HTTP status codes
+            if self.config.true_code:
+                defer.returnValue(self.config.true_code == response.code)
+            elif self.config.error_code:
+                defer.returnValue(self.config.error_code == response.code)
+            else:
+                defer.returnValue(self.config.fail_code == response.code)
         else:
-            defer.returnValue(self.config.false_keyword in content)
+
+            if self.config.error_keyword:
+                defer.returnValue(self.config.error_keyword in content)
+            elif self.config.lookup:
+                defer.returnValue(self.config.true_keyword in content)
+            else:
+                defer.returnValue(self.config.false_keyword in content)
 
 
     def GetSearchSpace(self):

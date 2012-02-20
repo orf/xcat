@@ -173,11 +173,18 @@ if __name__ == "__main__":
     parser.add_argument("--arg", help="POST or GET argument(s) to send. The payload will be appended", type=str, action="store",
         dest="post_argument")
 
-    group = parser.add_mutually_exclusive_group()
+    detection = parser.add_mutually_exclusive_group()
+
+    group = detection.add_mutually_exclusive_group()
     group.add_argument("--true", help="Keyword that if present indicates a success", dest="true_keyword")
     group.add_argument("--false", help="Keyword that if present indicates a failure (And if not present indicates a success)", dest="false_keyword")
     group.add_argument("--error", help="Keyword that if present indicates a server error. Used for exploiting injection vectors that give no output, but can be caused to error",
         dest="error_keyword")
+
+    group2 = detection.add_mutually_exclusive_group()
+    group2.add_argument("--true-code", help="The HTTP status code that indicates a success", dest="true_code", type=int)
+    group2.add_argument("--false-code", help="The HTTP status code that indicates a failure", dest="fail_code", type=int)
+    group2.add_argument("--error-code", help="The HTTP status code that indicates a server error", dest="error_code", type=int)
 
     parser.add_argument("--schema-only", help="Only extract the node names and no text data or attribute values", action="store_true", dest="schema_only")
     parser.add_argument("--quotecharacter", help="The quote character we will use to inject (normally' or \")", default="\"", dest="quote_character")

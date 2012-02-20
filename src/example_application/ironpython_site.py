@@ -40,7 +40,6 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(page % cgi.escape(_t, quote=True))
 
-        print postvars
         if _t:
             try:
                 result = HandleQuery('/lib/book[title="'+ _t + '"]')
