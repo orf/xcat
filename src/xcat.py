@@ -95,6 +95,14 @@ def GetCharacters(payloads, node, size=0, count_it=False):
 
     defer.returnValue("".join(returner))
 
+@defer.inlineCallbacks
+def GetXMLFromDefinedQuery(payloads, node):
+    # Count the set
+    count = Count(payloads, node=node.replace("$COUNT","*"), count_type=CountTypes.LENGTH)
+    print "Found %s nodes to extract"%count
+
+    for i in xrange(1, count+1):
+        yield GetXMLFromNode(payloads, node.replace("$COUNT",i))
 
 @defer.inlineCallbacks
 def GetXMLFromNode(payloads, node):
@@ -161,6 +169,8 @@ def Main(args):
         #payloads.SetSearchSpace(string.ascii_letters + string.punctuation + string.digits + " ")
         cwd = yield GetCharacters(payloads, "document-uri(/)")
         print "Working file: %s"%cwd
+    elif args.executequery:
+        yield GetXMLFromDefinedQuery(payloads, args.executequery)
     else:
         yield GetXMLFromNode(payloads, "/*")
     reactor.stop()
