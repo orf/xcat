@@ -1,5 +1,4 @@
 ToDo for XCat 0.5:
-   - (re)Implement the doc() function
    - Rate limiting
      * max_concurrent_connections flag
      * global speed limit?

