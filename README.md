@@ -20,7 +20,7 @@ Features
 
 Usage
 -----
-	usage: main.py [-h] [--method {GET,POST}] [--arg POST_ARGUMENT]
+	usage: xcat.py [-h] [--method {GET,POST}] [--arg POST_ARGUMENT]
 	               [--true TRUE_KEYWORD] [--false FALSE_KEYWORD]
 	               [--max_search SEARCH_LIMIT] [--error ERROR_KEYWORD]
 	               [--timeout TIMEOUT] [--threadpool POOLSIZE]
