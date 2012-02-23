@@ -278,7 +278,7 @@ if __name__ == "__main__":
     parser.add_argument("URL", action="store")
     args = parser.parse_args()
 
-    sys.stderr.write("XCat version %s"%__VERSION__)
+    sys.stderr.write("XCat version %s\n"%__VERSION__)
 
     if not any([args.false_keyword, args.true_keyword, args.error_keyword]):
         sys.stderr.write("Error: You must supply a false, true or error keyword\n")
