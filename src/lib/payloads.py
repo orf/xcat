@@ -27,15 +27,15 @@ class Payload(object):
         if parent.config.xversion == "2":
             if self.takes_codepoints:
                 output = string.Template(output.safe_substitute(node=parent.PAYLOADS["STRING-TO-CODEPOINTS"].GetString()))
-                print "Output (codepoints): %s"%output.template
+                #print "Output (codepoints): %s"%output.template
 
             if parent.config.normalize_unicode and self.normalization:
                 output = string.Template(output.safe_substitute(node=parent.PAYLOADS["WRAP_UNICODE"].GetString()))
-                print "Output (norm): %s"%output.template
+                #print "Output (norm): %s"%output.template
 
             if parent.config.lowercase and self.can_lower:
                 output = string.Template(output.safe_substitute(node=parent.PAYLOADS["WRAP_LOWERCASE"].GetString()))
-                print "Output (lower): %s"%output.template
+                #print "Output (lower): %s"%output.template
 
         return string.Template(parent.BASE.substitute(payload=output.safe_substitute()))
 
