@@ -2,6 +2,7 @@ ToDo for XCat 0.5:
    - Rate limiting
      * max_concurrent_connections flag
      * global speed limit?
+     * speed reporting
    - File shell
    - Regex
 

@@ -208,6 +208,7 @@ def Main(args):
         sys.exit(1)
 
     sys.stderr.write("Exploiting...\n")
+    t1 = time.time()
     if args.getcwd:
         if not args.xversion == "2":
             sys.stderr.write("Working file detection is only supported in XPath 2.0")
@@ -219,6 +220,9 @@ def Main(args):
         yield GetXMLFromDefinedQuery(payloads, args.executequery)
     else:
         yield GetXMLFromNode(payloads, "/*")
+    t2 = time.time()
+    if args.timeit:
+        sys.stderr.write("\nTime taken: %s\n"%str(t2-t1))
     reactor.stop()
 
 
@@ -270,8 +274,11 @@ if __name__ == "__main__":
     parser.add_argument("--fileshell", help="Launch a shell for browing remote files", action="store_true", dest="fileshell")
     parser.add_argument("--getcwd", help="Retrieve the XML documents URI that the server is executing our query against", action="store_true", dest="getcwd")
     parser.add_argument("--useragent", help="User agent to use", action="store", dest="user_agent", default="XCat %s"%__VERSION__)
+    parser.add_argument("--timeit", help="Time the retrieval", action="store_true", dest="timeit", default=False)
     parser.add_argument("URL", action="store")
     args = parser.parse_args()
+
+    sys.stderr.write("XCat version %s"%__VERSION__)
 
     if not any([args.false_keyword, args.true_keyword, args.error_keyword]):
         sys.stderr.write("Error: You must supply a false, true or error keyword\n")
@@ -292,6 +299,7 @@ if __name__ == "__main__":
     site = DocServerHandler(rhandler)
     if args.connectback:
         reactor.listenTCP(80, site)
+
 
     Main(args)
 
