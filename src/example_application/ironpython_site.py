@@ -32,6 +32,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.getheader('content-length'))
         postvars = urlparse.parse_qs(self.rfile.read(length), keep_blank_values=1)
+        print postvars
         if "title" in postvars:
             _t = postvars["title"][0]
         else:
@@ -40,7 +41,6 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(page % cgi.escape(_t, quote=True))
 
-        print postvars
         if _t:
             try:
                 result = HandleQuery('/lib/book[title="'+ _t + '"]')
