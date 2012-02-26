@@ -140,11 +140,16 @@ def GetCharacters(payloads, node, size=0, count_it=False):
 @defer.inlineCallbacks
 def GetXMLFromDefinedQuery(payloads, node):
     # Count the set
-    count = Count(payloads, node=node.replace("$COUNT","*"), count_type=CountTypes.LENGTH)
-    print "Found %s nodes to extract"%count
+    count = yield Count(payloads, node=node.replace("$COUNT","*"), count_type=CountTypes.LENGTH)
 
-    for i in xrange(1, count+1):
-        yield GetXMLFromNode(payloads, node.replace("$COUNT",i))
+    if not count:
+        print "Found 0 nodes to extract, exiting"
+    else:
+        print "Found %s nodes to extract"%count
+
+        for i in xrange(1, count+1):
+            _c = node.replace("$COUNT",str(i))
+            yield GetXMLFromNode(payloads, _c)
 
 @defer.inlineCallbacks
 def GetXMLFromNode(payloads, node):
@@ -218,6 +223,16 @@ def Main(args):
         print "Working file: %s"%cwd
     elif args.executequery:
         yield GetXMLFromDefinedQuery(payloads, args.executequery)
+    elif args.fileshell:
+        while True:
+            print "Enter a file URI (Must be absolute). Use --getcwd to see where we are"
+            file_path = raw_input()
+            if file_path == "":
+                break
+            else:
+                yield GetXMLFromDefinedQuery(payloads, ("doc('%s')/*[$COUNT]"%file_path).replace("'", args.quote_character))
+                print ""
+
     else:
         yield GetXMLFromNode(payloads, "/*")
     t2 = time.time()
