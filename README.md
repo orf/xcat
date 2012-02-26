@@ -10,8 +10,8 @@ Features
 --------
 * Exploits both GET and POST attacks
 * Extracts all nodes, comments, attributes and data from the entire XML document
-* One file, three dependencies ([Python 2.7+](http://www.python.org/download/releases/2.7.2/), [Futures](http://pypi.python.org/pypi/futures/2.1.2) (only if you are not using 3.x) and [cElementTree](http://effbot.org/downloads/#elementtree))
-* Parallel requests (adjustable thread pool size)
+* Small and lightweight (only dependency is [Twisted](www.twistedmatrix.com))
+* Parallel requests
 * XPath 2.0 supported (with graceful degrading to 1.0)
 * [Regex](http://www.w3.org/TR/xpath-functions/#func-matches) pattern matching to reduce character search space
 * [Unicode normalization](http://www.w3.org/TR/xpath-functions/#func-normalize-unicode)
@@ -21,14 +21,18 @@ Features
 Usage
 -----
 	usage: xcat.py [-h] [--method {GET,POST}] [--arg POST_ARGUMENT]
-	               [--true TRUE_KEYWORD] [--false FALSE_KEYWORD]
-	               [--max_search SEARCH_LIMIT] [--error ERROR_KEYWORD]
-	               [--timeout TIMEOUT] [--threadpool POOLSIZE]
-	               [--stepsize STEP_SIZE] [--xversion {1,2,auto}] [--lowercase]
-	               [--regex] [--connectback] [--connectbackip CONNECTBACK_IP]
-	               [--connectbackport CONNECTBACK_PORT]
-	               [--notfoundstring NOTFOUNDCHAR] [--fileshell]
-	               URL
+                   [[--true TRUE_KEYWORD | --false FALSE_KEYWORD | --error ERROR_KEYWORD]
+                   [--true-code TRUE_CODE | --false-code FAIL_CODE | --error-code ERROR_CODE]
+                   [--schema-only] [--quotecharacter QUOTE_CHARACTER]
+                   [--executequery EXECUTEQUERY] [--max_search SEARCH_LIMIT]
+                   [--timeout TIMEOUT] [--stepsize STEP_SIZE]
+                   [--normalize {NFD,NFC,NFDK,NFKC}] [--xversion {1,2,auto}]
+                   [--lowercase] [--regex] [--connectback]
+                   [--connectbackip CONNECTBACK_IP]
+                   [--connectbackport CONNECTBACK_PORT]
+                   [--notfoundstring NOTFOUNDCHAR] [--fileshell] [--getcwd]
+                   [--useragent USER_AGENT] [--timeit]
+                   URL
 
 ### Simple usage with the example application
 Check out the [readme](xcat/blob/master/src/example_application) to try out XCat with the provided example application.
