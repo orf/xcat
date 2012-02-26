@@ -10,7 +10,7 @@ Features
 --------
 * Exploits both GET and POST attacks
 * Extracts all nodes, comments, attributes and data from the entire XML document
-* Small and lightweight (only dependency is [Twisted](www.twistedmatrix.com))
+* Small and lightweight (only dependency is [Twisted](http://www.twistedmatrix.com))
 * Parallel requests
 * XPath 2.0 supported (with graceful degrading to 1.0)
 * [Regex](http://www.w3.org/TR/xpath-functions/#func-matches) pattern matching to reduce character search space
