@@ -170,7 +170,7 @@ def GetXMLFromNode(payloads, node):
 
     writer.start(node_name, attrib=attributes)
 
-    if not args.schema_only:
+    if not args.schema_only or not args.ignore_comments:
         commentCount = yield Count(payloads, node+"/comment()", count_type=CountTypes.LENGTH)
         if commentCount:
             for i in xrange(1, commentCount+1):
@@ -290,6 +290,7 @@ if __name__ == "__main__":
     parser.add_argument("--getcwd", help="Retrieve the XML documents URI that the server is executing our query against", action="store_true", dest="getcwd")
     parser.add_argument("--useragent", help="User agent to use", action="store", dest="user_agent", default="XCat %s"%__VERSION__)
     parser.add_argument("--timeit", help="Time the retrieval", action="store_true", dest="timeit", default=False)
+    parser.add_argument("--ignorecomments", help="Don't extract document comments", action="store_true", dest="ignore_comments", default=False)
     parser.add_argument("URL", action="store")
     args = parser.parse_args()
 
