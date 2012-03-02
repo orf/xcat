@@ -2,10 +2,12 @@
     <book>
         <title>Bible</title>
         <description>The word of god</description>
+	<price>1</price>
     </book>
 
     <book>
         <title>Davinci code</title>
         <description>A book</description>
+	<price>10</price>
     </book>
 </lib>

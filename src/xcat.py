@@ -81,12 +81,13 @@ class DocRequestHandler(resource.Resource):
         return self.ids.get(id,None)
 
     def render_GET(self, request):
-        if all([request.args.get("q",None), request.args.get("id",None)]):
-            id = request.args.get("id")[0]
-            d  = request.args.get("q")[0]
+        if request.args.get("id",None):
+            t = request.args.get("id")[0]
+            id,value = t.split("-",1)
+
             if id not in self.ids:
                 return sys.stderr.write("Error: query ID %s does not exist"%id)
-            self.ids[id] = d
+            self.ids[id] = value
 
         return "<emptynode></emptynode>"
 
@@ -291,6 +292,7 @@ if __name__ == "__main__":
     parser.add_argument("--useragent", help="User agent to use", action="store", dest="user_agent", default="XCat %s"%__VERSION__)
     parser.add_argument("--timeit", help="Time the retrieval", action="store_true", dest="timeit", default=False)
     parser.add_argument("--ignorecomments", help="Don't extract document comments", action="store_true", dest="ignore_comments", default=False)
+    #parser.add_argument("--existdb", help="Enable exist-db compatability mode. Use this if you are injecting a query that is executed by an eXist-DB process", action="store_true", dest="exist_compat", default=False)
     parser.add_argument("URL", action="store")
     args = parser.parse_args()
 
@@ -314,7 +316,7 @@ if __name__ == "__main__":
     rhandler = DocRequestHandler()
     site = DocServerHandler(rhandler)
     if args.connectback:
-        reactor.listenTCP(80, site)
+        reactor.listenTCP(int(args.connectback_port), site)
 
 
     Main(args)

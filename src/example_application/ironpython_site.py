@@ -1,10 +1,11 @@
 print "Loading.."
 import clr
-clr.AddReferenceToFile("XmlPrime.dll")
-clr.AddReferenceToFile("XmlPrime.ExtensionMethods.dll")
+clr.AddReferenceToFile("saxon9he.dll")
+clr.AddReferenceToFile("saxon9he-api.dll")
 clr.AddReference('System.Xml')
-import XmlPrime
+import Saxon.Api
 import System.Xml
+import System.Uri
 import argparse
 import BaseHTTPServer
 import urlparse
@@ -43,7 +44,10 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         if _t:
             try:
-                result = HandleQuery('/lib/book[title="'+ _t + '"]')
+                _q = '''doc(concat("http://localhost:8080/exist/rest/books/input.xml?_query=",encode-for-uri("/lib/book[title='%s']")))/*[1]/*'''%_t
+                print _q
+                result = HandleQuery(_q)
+                print result
             except Exception,e:
                 self.wfile.write("<b>Exception!</b><br/>")
                 self.wfile.write(traceback.format_exc().replace("\n","<br/>"))
@@ -59,22 +63,17 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         print "Done..."
 
 def HandleQuery(query):
-    return XmlPrime.XPath.Compile(query, settings.NameTable).EvaluateToItem(dyn_settings)
+    qs = compiler.Compile(query).Load()
+    qs.ContextItem = node
+    return [x for x in qs.GetEnumerator()]
+    #return XmlPrime.XPath.Compile(query, settings.NameTable).EvaluateToItem(dyn_settings)
 
-settings = System.Xml.XmlReaderSettings()
-settings.NameTable = System.Xml.NameTable()
+processor = Saxon.Api.Processor()
+compiler = processor.NewXPathCompiler()
+doc = processor.NewDocumentBuilder()
+reader = System.Xml.XmlReader.Create("input.xml")
+node = doc.Build(reader)
 
-reader = System.Xml.XmlReader.Create("input.xml", settings)
-document = XmlPrime.XdmDocument(reader)
-
-contextItem = document.CreateNavigator()
-dyn_settings = XmlPrime.DynamicContextSettings()
-resolver = System.Xml.XmlUrlResolver()
-reader_settings = System.Xml.XmlReaderSettings()
-
-reader_settings.NameTable = settings.NameTable
-dyn_settings.DocumentSet = XmlPrime.DocumentSet(resolver, reader_settings)
-dyn_settings.ContextItem = contextItem
 
 if "--shell" in sys.argv:
     while True:
