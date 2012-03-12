@@ -4,7 +4,6 @@ import argparse
 from twisted.internet import reactor, defer
 from lib import SimpleXMLWriter, payloads
 from twisted.web import server, resource
-from twisted.python import failure
 import sys
 import hashlib
 import time
@@ -108,7 +107,11 @@ def GetCharacters(payloads, node, size=0, count_it=False):
     if args.connectback:
         global rhandler
         id = rhandler.AddConnection()
-        yield payloads.RunQuery(payloads.Get("HTTP_TRANSFER")(node=node, id=id, host=args.connectback_ip))
+        if args.connectback_port:
+            port = ":%s"%args.connectback_port
+        else:
+            port = ""
+        yield payloads.RunQuery(payloads.Get("HTTP_TRANSFER")(node=node, id=id, host=args.connectback_ip, port=port))
         info = rhandler.GetResult(id)
         defer.returnValue(info or "")
     else:
