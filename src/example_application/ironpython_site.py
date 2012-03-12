@@ -27,6 +27,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
+        #self.wfile.write("<root></root>")
         self.wfile.write(page % "")
         self.wfile.write("</body></html>")
 
@@ -44,7 +45,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         if _t:
             try:
-                _q = '''doc(concat("http://localhost:8080/exist/rest/books/input.xml?_query=",encode-for-uri("/lib/book[title='%s']")))/*[1]/*'''%_t
+                _q = '''/lib/book[title='%s']'''%_t
                 print _q
                 result = HandleQuery(_q)
                 print result
@@ -86,10 +87,11 @@ if "--shell" in sys.argv:
 parser = argparse.ArgumentParser()
 parser.add_argument("--port", default=80,dest="port",type=int)
 parser.add_argument("--nofeedback", dest="hide_feedback", action="store_true")
+parser.add_argument("--addr", dest="addr", default="localhost", action="store")
 args = parser.parse_args()
 print args
 
-server_addr = ('localhost',args.port)
+server_addr = (args.addr,args.port)
 httpd = BaseHTTPServer.HTTPServer(server_addr,
                                   RequestHandler)
 print "Serving on port %s"%args.port
