@@ -237,7 +237,7 @@ def Main(args):
                 print ""
 
     else:
-        yield GetXMLFromNode(payloads, "/*")
+        yield GetXMLFromNode(payloads, "/*[1]")
     t2 = time.time()
     if args.timeit:
         sys.stderr.write("\nTime taken: %s\n"%str(t2-t1))
