@@ -7,7 +7,6 @@ import string
 from twisted.web.client import Agent
 from twisted.internet import reactor, defer
 from twisted.web.http_headers import Headers
-import urlparse
 import urllib
 
 class Payload(object):
@@ -46,7 +45,7 @@ class Payload(object):
         return str(self)
 
     def __str__(self):
-        return "<Payload `%s%s`>"%(self.payload, self.other or "")
+        return "<Payload `%s`>"%(self.payload)
 
 class WrapperPayload(Payload):
     pass
@@ -80,7 +79,7 @@ class PayloadMaker(object):
 
     def __init__(self, config):
         self.config = config
-        self.search_space = string.ascii_letters + string.digits + " "
+        self.search_space = string.ascii_letters + string.digits + " .-"
         self.agent = Agent(reactor)
 
         self._headers = Headers({"User-Agent":[config.user_agent]})
@@ -93,28 +92,39 @@ class PayloadMaker(object):
         for payload in self.PAYLOADS:
             self.PAYLOADS[payload] = self.PAYLOADS[payload].replace("'", config.quote_character)
 
+
     def Get(self, name):
         payload = self.PAYLOADS[name.upper()].Create(self)
         return payload.safe_substitute
 
     @defer.inlineCallbacks
-    def RunQuery(self, payload):
+    def RunQuery(self, payload, errorCount=0):
         if self.config.http_method == "GET":
             URI = "%s?%s"%(self.config.URL,
                            self.config.post_argument + urllib.quote_plus(payload))
         else:
             URI = self.config.URL
 
-        response = yield self.agent.request(
-            self.config.http_method,
-            URI,
-            self._headers,
-            StringProducer(self.config.post_argument + payload) if self.config.http_method == "POST" else None
-        )
+        try:
+            response = yield self.agent.request(
+                self.config.http_method,
+                URI,
+                self._headers,
+                StringProducer(self.config.post_argument + payload) if self.config.http_method == "POST" else None
+            )
 
-        body_deferred = defer.Deferred()
-        response.deliverBody(QuickAndDirtyReceiver(body_deferred))
-        content = yield body_deferred
+            body_deferred = defer.Deferred()
+            response.deliverBody(QuickAndDirtyReceiver(body_deferred))
+            content = yield body_deferred
+        except Exception:
+            if errorCount >= 5:
+                raise
+            else:
+                d = defer.Deferred()
+                reactor.callLater(errorCount / 2, d.callback, None)
+                yield d
+                ret = yield self.RunQuery(payload, errorCount + 1)
+                defer.returnValue(ret)
 
 
         if any([self.config.true_code, self.config.error_code, self.config.fail_code]):

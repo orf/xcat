@@ -37,6 +37,7 @@ def Count(payloads, node, count_type=CountTypes.STRING, _codepoint_count=None):
     else:
         search_query = "GET_CODEPOINT_LENGTH"
         specific_query = "GET_NODE_CODEPOINT"
+        MIN, MAX = (args.codepointstart, args.codepointstart+10)
 
         #INC = 20
         #MAX = 20
@@ -126,6 +127,7 @@ def GetCharacters(payloads, node, size=0, count_it=False):
                     if r:
                         returner.append(char)
                         _found = True
+                        break
             else:
                 r = yield Count(payloads, node, count_type=CountTypes.CODEPOINT, _codepoint_count=_counter)
                 #raw_input("GetCharacters: r = %s"%r)
@@ -292,6 +294,8 @@ if __name__ == "__main__":
     parser.add_argument("--useragent", help="User agent to use", action="store", dest="user_agent", default="XCat %s"%__VERSION__)
     parser.add_argument("--timeit", help="Time the retrieval", action="store_true", dest="timeit", default=False)
     parser.add_argument("--ignorecomments", help="Don't extract document comments", action="store_true", dest="ignore_comments", default=False)
+    parser.add_argument("--codepointstart", help="Number to start searching at when using codepoints and XPath 2.0. Defaults to 0", action="store", dest="codepointstart",
+                                            default=0, type=int)
     #parser.add_argument("--existdb", help="Enable exist-db compatability mode. Use this if you are injecting a query that is executed by an eXist-DB process", action="store_true", dest="exist_compat", default=False)
     parser.add_argument("URL", action="store")
     args = parser.parse_args()
