@@ -2,7 +2,8 @@
 # Command line utility for extracting XML documents through XPath injection vulnerabilities
 import argparse
 from twisted.internet import reactor, defer
-from lib import SimpleXMLWriter, payloads
+from lib import SimpleXMLWriter
+from lib import payloads
 from twisted.web import server, resource
 import sys
 import hashlib
@@ -208,22 +209,22 @@ def Main(args):
 
     if args.error_keyword and args.xversion == "1":
         sys.stderr.write("Error based detection is unavailable when attacking targets running XPath 1.0\n")
-        sys.exit(1)
+        exit()
 
     if args.connectback and args.xversion == "1":
         sys.stderr.write("Connectback is only supported with XPath 2.0")
-        sys.exit(1)
+        exit()
 
     if args.connectback and not args.connectback_ip:
         sys.stderr.write("Error: You must specify a IP when using connectback\n")
-        sys.exit(1)
+        exit()
 
     sys.stderr.write("Exploiting...\n")
     t1 = time.time()
     if args.getcwd:
         if not args.xversion == "2":
             sys.stderr.write("Working file detection is only supported in XPath 2.0")
-            sys.exit(1)
+            exit()
         #payloads.SetSearchSpace(string.ascii_letters + string.punctuation + string.digits + " ")
         cwd = yield GetCharacters(payloads, "document-uri(/)")
         print "Working file: %s"%cwd
@@ -307,12 +308,16 @@ if __name__ == "__main__":
 
     if not any([args.false_keyword, args.true_keyword, args.error_keyword]):
         sys.stderr.write("Error: You must supply a false, true or error keyword\n")
-        sys.exit(1)
+        exit()
+
+    if not args.post_argument:
+        sys.stderr.write("Error: no POST/GET arguments supplied!\n")
+        exit()
 
     if args.http_method == "POST":
         if not args.post_argument:
             sys.stderr.write("Error: You must supply some POST arguments if you are making a POST request!\n")
-            sys.exit(1)
+            exit()
 
 
     if args.true_keyword:
