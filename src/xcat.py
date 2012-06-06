@@ -177,7 +177,7 @@ def GetXMLFromNode(payloads, node):
 
     writer.start(node_name, attrib=attributes)
 
-    if not args.schema_only or not args.ignore_comments:
+    if not args.schema_only and not args.ignore_comments:
         commentCount = yield Count(payloads, node+"/comment()", count_type=CountTypes.LENGTH)
         if commentCount:
             for i in xrange(1, commentCount+1):
