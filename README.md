@@ -23,7 +23,7 @@ Examples
 --------
 If you run a windows machine you can install IronPython and start the example application (example_application/ironpython_site.py).
 The simplest command you can run on this site is:
-    python xcat.py --true "Book found" --arg "title=Bible" --method POST --autopwn http://localhost:80
+`python xcat.py --true "Book found" --arg "title=Bible" --method POST --autopwn http://localhost:80`
 You have to specify a condition keyword or HTTP status code (true, false, error), an argument for the attack to be appended to and a HTTP method to use.
 The --autopwn flag will make xcat automatically detect more exotic features (xpath version, quote character and various out of bound attacks).
 
