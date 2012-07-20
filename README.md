@@ -17,21 +17,29 @@ Features
 * [Unicode normalization](http://www.w3.org/TR/xpath-functions/#func-normalize-unicode)
 * Advanced data postback through HTTP (see below)
 * Arbitrarily read XML files on the servers file system via the doc() function (see below)
+* Arbitrarily read text files on the servers file system via crafted SYSTEM entities
+
+Examples
+--------
+If you run a windows machine you can install IronPython and start the example application (example_application/ironpython_site.py).
+The simplest command you can run on this site is:
+    python xcat.py --true "Book found" --arg "title=Bible" --method POST --autopwn http://localhost:80
+You have to specify a condition keyword or HTTP status code (true, false, error), an argument for the attack to be appended to and a HTTP method to use.
+The --autopwn flag will make xcat automatically detect more exotic features (xpath version, quote character and various out of bound attacks).
 
 Usage
 -----
-	usage: xcat.py [-h] [--method {GET,POST}] [--arg POST_ARGUMENT]
-                   [[--true TRUE_KEYWORD | --false FALSE_KEYWORD | --error ERROR_KEYWORD]
+    usage: xcat.py [-h] [--method {GET,POST}] [--arg POST_ARGUMENT]
+                   [--true TRUE_KEYWORD | --false FALSE_KEYWORD | --error ERROR_KEYWORD]
                    [--true-code TRUE_CODE | --false-code FAIL_CODE | --error-code ERROR_CODE]
-                   [--schema-only] [--quotecharacter QUOTE_CHARACTER]
+                   [--autopwn] [--schema-only] [--quotecharacter QUOTE_CHARACTER]
                    [--executequery EXECUTEQUERY] [--max_search SEARCH_LIMIT]
                    [--timeout TIMEOUT] [--stepsize STEP_SIZE]
                    [--normalize {NFD,NFC,NFDK,NFKC}] [--xversion {1,2,auto}]
-                   [--lowercase] [--regex] [--connectback]
-                   [--connectbackip CONNECTBACK_IP]
-                   [--connectbackport CONNECTBACK_PORT]
+                   [--lowercase] [--regex] [--connectback CONNECTBACK]
                    [--notfoundstring NOTFOUNDCHAR] [--fileshell] [--getcwd]
-                   [--useragent USER_AGENT] [--timeit]
+                   [--useragent USER_AGENT] [--timeit] [--ignorecomments]
+                   [--codepointstart CODEPOINTSTART]
                    URL
 
 ### Simple usage with the example application

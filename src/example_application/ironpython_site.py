@@ -45,7 +45,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         if _t:
             try:
-                _q = '''/lib/book[title='%s']'''%_t
+                _q = '''/lib/book[title="%s"]'''%_t
                 print _q
                 result = HandleQuery(_q)
                 print result

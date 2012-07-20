@@ -1,5 +1,6 @@
 <lib>
     <book>
+        <!-- Comment -->
         <title>Bible</title>
         <description>The word of god</description>
 	<price>1</price>
