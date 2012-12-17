@@ -28,14 +28,14 @@ The simplest command you can run on this site is:
 
 You have to specify a condition keyword or HTTP status code (true, false, error), an argument for the attack to be appended to and a HTTP method to use.
 The --autopwn flag will make xcat automatically detect more exotic features (xpath version, quote character and various out of bound attacks):
-`XCat version 0.7
+```XCat version 0.7
   * Automatically detecting available features...
     * Detecting quote: "
     * XPath Version: 2
     * OOB HTTP Support:
       * 10.10.10.132:80: Success
     * Entity Injection Retrieval: Supported
- Exploiting...`
+ Exploiting...```
 
 Usage
 -----
