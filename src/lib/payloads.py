@@ -106,15 +106,15 @@ class PayloadMaker(object):
 
     @defer.inlineCallbacks
     def RunQuery(self, payload, errorCount=0):
+        content = self.config.post_argument.replace("{0}", payload)
         if self.config.http_method == "GET":
-            URI = "%s?%s"%(self.config.URL,
-                           self.config.post_argument + urllib.quote_plus(payload))
+            URI = "%s?%s"%(self.config.URL,urllib.quote_plus(content))
         else:
             URI = self.config.URL
 
         try:
             #print self.config.post_argument.replace("{0}", payload)
-            body = StringProducer(self.config.post_argument.replace("{0}", payload)) if self.config.http_method == "POST" else None
+            body = StringProducer(content) if self.config.http_method == "POST" else None
             response = yield self.agent.request(
                 self.config.http_method,
                 URI,
