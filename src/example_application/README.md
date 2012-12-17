@@ -12,6 +12,6 @@ Install then copy all the .dll and .xml files (saxon9he-api.dll and saxon9he.dll
 	
 to run the sample application. You can use this to try out XCat - the true keyword is "Book found" and an example request string (for xcats --arg flag) is "title=Bible". Run XCat with the flags below to dump the XML file:
 
-	xcat.py --true "Book found" --arg "title=Bible" --method POST http://localhost:80/
+	xcat.py --true "Book found" --arg "title=Bible" --method POST http://localhost:80/ --autopwn
 	
 Have a play with the --regex and --connectback flags
