@@ -340,9 +340,13 @@ def Main(args):
         print " * --doc    : Use doc() to fetch files. Only works on XML files and returns the whole document"
         if can_use_entity:
             print " * --entity : Use entity injection to fetch files. Works best on text files with no XML characters in them (<,>,--). Must be absolute."
-
+        print "   -> Using doc() to fetch documents"
         while True:
-            file_path = raw_input("URI: ")
+            try:
+                file_path = raw_input("URI: ")
+            except EOFError:
+                file_path = ""
+
             if file_path == "":
                 break
             else:
