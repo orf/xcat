@@ -106,7 +106,8 @@ class LocalFileRequestHandler(resource.Resource):
         # There is proberbly a much nicer way to code this, but whatever.
         if request.args.get("t",None):
             return """
-<!DOCTYPE copyright [
+<!DOCTYPE stuff [
+<!ELEMENT data ANY>
 <!ENTITY c "ok">
 ]>
 <data>&c;</data>"""
@@ -118,7 +119,8 @@ class LocalFileRequestHandler(resource.Resource):
                 return ""
 
             return """
-<!DOCTYPE copyright [
+<!DOCTYPE stuff [
+<!ELEMENT data ANY>
 <!ENTITY c SYSTEM "%s">
 ]>
 <data>&c;</data>"""%path
