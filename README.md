@@ -54,7 +54,7 @@ Usage
                    URL
 
 ### Simple usage with the example application
-Check out the [readme](xcat/blob/master/src/example_application) to try out XCat with the provided example application.
+Check out the [readme](tree/master/src/example_application) to try out XCat with the provided example application.
 
 Altering the payload
 --------
