@@ -69,3 +69,7 @@ Possibly the most advanced feature of XCat is its 'HTTP postback' feature. The X
 This is far more efficient than iterating over the string character by character and can greatly reduce the retrieval times.
 
 You can (ab)use this function to load XML file on the system, as long as you have read permissions over it, allowing you to retrieve lots of lovely XML configuration files - you can jump into a pseudo-shell within XCat by using the --fileshell flag and enter any file path.
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/orf/xcat/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
