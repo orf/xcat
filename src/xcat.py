@@ -433,6 +433,7 @@ if __name__ == "__main__":
     parser.add_argument("--fileshell", help="Launch a shell for browing remote files", action="store_true", dest="fileshell")
     parser.add_argument("--getcwd", help="Retrieve the XML documents URI that the server is executing our query against", action="store_true", dest="getcwd")
     parser.add_argument("--useragent", help="User agent to use", action="store", dest="user_agent", default="XCat %s"%__VERSION__)
+    parser.add_argument("--referer", help="Referer to use", action="store", dest="referer", default="/")
     parser.add_argument("--cookie", help="Cookie to use", action="store", dest="cookie")
     parser.add_argument("--timeit", help="Time the retrieval", action="store_true", dest="timeit", default=False)
     parser.add_argument("--ignorecomments", help="Don't extract document comments", action="store_true", dest="ignore_comments", default=False)

