@@ -91,7 +91,7 @@ class PayloadMaker(object):
 
         self._headers = Headers({"User-Agent":[config.user_agent], "Referer":[config.referer], "Content-Type":["application/x-www-form-urlencoded"], "Cookie":[config.cookie]})
 
-        if config.error_keyword:
+        if config.error_keyword or config.error_code:
             self.BASE = string.Template("' and (if ($payload) then error() else 0) and '1' = '1".replace("'", config.quote_character))
         else:
             self.BASE = string.Template("' and $payload and '1'='1".replace("'", config.quote_character))
