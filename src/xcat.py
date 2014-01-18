@@ -445,8 +445,8 @@ if __name__ == "__main__":
 
     sys.stderr.write("XCat version %s\n"%__VERSION__)
 
-    if not any([args.false_keyword, args.true_keyword, args.error_keyword]):
-        sys.stderr.write("Error: You must supply a false, true or error keyword\n")
+    if not any([args.false_keyword, args.true_keyword, args.error_keyword, args.true_code, args.fail_code, args.error_code]):
+        sys.stderr.write("Error: You must supply a false, true or error keyword/code\n")
         exit()
 
     if not args.post_argument:
