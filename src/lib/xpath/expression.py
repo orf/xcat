@@ -5,6 +5,9 @@ class ExpressionSugar(object):
     def expr(self, symbol, value):
         return Expression("%s%s%s" % (self.value(), symbol, arg_to_representation(value)))
 
+    def __getitem__(self, item):
+        return Expression("%s[%s]" % (self.value(), item))
+
     def __eq__(self, other):
         return self.expr("=", other)
 
@@ -58,23 +61,57 @@ class Expression(ExpressionSugar):
     def __repr__(self):
         return "<Expression: %s>" % self.string
 
-    def comment(self):
-        return Expression(self.string + "/comment()")
-
+    @property
     def text(self):
-        return Expression(self.string + "/text()")
+        return IterableExpression(self.string + "/text()")
 
+    @property
     def any_node(self):
         return Expression(self.string + "/node()")
 
     def add_path(self, path):
         return Expression(self.string + path)
 
+    @property
     def count(self):
-        return Function("count", self.string)
+        return count(self)
+
+    @property
+    def name(self):
+        return name(self)
 
     def value(self):
         return self.string
+
+    @property
+    def attributes(self):
+        return AttributesExpression("%s/@*" % self.string)
+
+    @property
+    def comments(self):
+        return CommentsExpression(self.string + "/comment()")
+
+    @property
+    def children(self):
+        return IterableExpression("%s/*" % self.string)
+
+
+class Node(Expression):
+    pass
+
+
+class IterableExpression(Expression):
+    def __call__(self, count):
+        for i in range(1, count+1):
+            yield self[i]
+
+
+class CommentsExpression(IterableExpression):
+    pass
+
+
+class AttributesExpression(IterableExpression):
+    pass
 
 
 class Attribute(Expression):
@@ -92,43 +129,42 @@ class Function(Expression):
         self.max_args = max_args
         self.args_count = args_count
 
-        self.validate_args(args)
         self.args = args
 
     def validate_args(self, args):
         if self.args_count != -1 and len(args) != self.args_count:
-            raise ValueError("%s requires %s arguments" % (self.string, self.args_count))
+            raise ValueError("%s requires %s arguments. Args: %s" % (self.string, self.args_count, args))
 
         if self.min_args != -1 and len(args) < self.min_args:
-            raise ValueError("%s requires at least %s arguments" % (self.string, self.min_args))
+            raise ValueError("%s requires at least %s arguments. Args: %s" % (self.string, self.min_args, args))
 
         if self.max_args != -1 and len(args) > self.max_args:
-            raise ValueError("%s requires at max %s arguments" % (self.string, self.max_args))
+            raise ValueError("%s requires at max %s arguments. Args: %s" % (self.string, self.max_args, args))
 
     def get_string(self, args):
         str_args = ",".join((arg_to_representation(a) for a in args))
         return "%s(%s)" % (self.string, str_args)
 
     def __str__(self):
+        self.validate_args(self.args)
         return self.get_string(self.args)
 
     def __call__(self, *args):
         call_args = self.args + args
         self.validate_args(call_args)
-        return self.get_string(call_args)
+        return Expression(self.get_string(call_args))
 
     def __repr__(self):
         return "<Function: %s %s>" % (self.string, self.args)
 
 
-A = Attribute
-E = Expression
-F = Function
+class Literal(Expression):
+    pass
 
 
 @singledispatch
 def arg_to_representation(other):
-        return str(other)
+    return str(other)
 
 @arg_to_representation.register(str)
 def _(other):
@@ -137,3 +173,36 @@ def _(other):
 @arg_to_representation.register(Expression)
 def _(other):
     return "(%s)" % other
+
+@arg_to_representation.register(Literal)
+def _(other):
+    return str(other)
+
+A = Attribute
+E = Expression
+L = Literal
+F = Function
+
+position = Function("position")
+count = Function("count")
+
+translate = Function("translate", args_count=3)
+string = Function("string")
+concat = Function("concat")
+starts_with = Function("starts-with")
+contains = Function("contains")
+substring = Function("substring", args_count=3)
+substring_before = Function("substring-before", args_count=2)
+substring_after = Function("substring-after", args_count=2)
+string_length = Function("string-length")
+normalize_space = Function("normalize-space")
+_not = Function("not")
+_true = Function("true")
+_false = Function("false")
+_sum = Function("sum")
+name = Function("name", args_count=1)
+
+# XPath 2.0 functions
+lower_case = Function("lower-case")
+string_to_codepoints = Function("string-to-codepoints", args_count=1)
+normalize_unicode = Function("normalize-unicode", args_count=1)

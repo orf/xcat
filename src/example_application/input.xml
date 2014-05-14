@@ -1,8 +1,11 @@
-<lib>
+<lib test="1" lol="3" omg="hahanoway">
     <book>
         <!-- Comment -->
         <title>Bible</title>
-        <description>The word of god</description>
+        <description>
+            The word of god in
+            all of its glory
+        </description>
 	<price>1</price>
     </book>
 
