@@ -284,7 +284,7 @@ def Main(args, site):
             sys.stdout.write("   * OOB HTTP Support: \n")
             new_args = copy.deepcopy(args)
             ip_addrs = [r[4][0] for r in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)]
-            for ip,port in zip(ip_addrs,itertools.cycle([80,53])):
+            for ip, port in zip(ip_addrs, itertools.cycle([80, 53])):
                 new_args.connectback = "%s:%s"%(ip,port)
                 sys.stdout.write("     * %s: "%new_args.connectback)
                 listener = MakeListener(site, port, ip)

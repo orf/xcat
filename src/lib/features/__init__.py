@@ -1,4 +1,4 @@
-from ..xpath.expression import Expression
+from ..xpath import Expression
 import asyncio
 
 
@@ -6,17 +6,20 @@ class BaseFeature(object):
     NAME = None
     TEST = None
 
-    @classmethod
     @asyncio.coroutine
-    def is_available(cls, requester):
-        if isinstance(cls.TEST, Expression):
-            tests = [cls.TEST]
-        elif isinstance(cls.TEST, list):
-            tests = cls.TEST
-        elif callable(cls.TEST):
-            tests = cls.TEST()
+    def execute(self, requester, expression):
+        raise NotImplementedError()
+
+    @asyncio.coroutine
+    def is_available(self, requester):
+        if isinstance(self.TEST, Expression):
+            tests = [self.TEST]
+        elif isinstance(self.TEST, list):
+            tests = self.TEST
+        elif callable(self.TEST):
+            tests = self.TEST()
         else:
-            raise NotImplementedError("TEST must be set to an expression, a list of expressions or a callable")
+            raise RuntimeError("TEST must be set to an xpath Expression, a list of Expressions or a callable")
 
         for t in tests:
             result = yield from requester.send_payload(
@@ -29,17 +32,22 @@ class BaseFeature(object):
 
 from .substring_search import EfficientSubstringSearch
 from .xpath_2 import XPath2
-from .codepoints import Codepoints
+from .codepointsearch import CodepointSearch
+from .doc import DocFeature
 
 _features = [
     XPath2,
     EfficientSubstringSearch,
-    Codepoints
+    CodepointSearch,
+    DocFeature
 ]
 
 
 @asyncio.coroutine
 def get_available_features(requester):
-    futures = map(asyncio.Task, (f.is_available(requester) for f in _features))
+    feature_instances = [
+        f() for f in _features
+    ]
+    futures = map(asyncio.Task, (f.is_available(requester) for f in feature_instances))
     results = (yield from asyncio.gather(*futures))
-    return (_features[i] for i, result in enumerate(results) if result is True)
+    return (feature_instances[i] for i, result in enumerate(results) if result is True)

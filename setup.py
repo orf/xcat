@@ -9,7 +9,7 @@ setup(name="xcat",
       package_dir = {'xcat': 'src'},
       namespace_packages =["xcat"],
       packages = ["xcat." + p for p in find_packages("src")],
-      install_requires=["aiohttp", "click", "nose", "logbook"],
+      install_requires=["aiohttp", "click", "nose", "logbook", "xmltodict", 'colorama', 'ipgetter'],
       entry_points={
           'console_scripts': [
               'xcat = xcat.xcat:run_from_cmd'

@@ -1,5 +1,5 @@
 import unittest
-from ..xpath.expression import *
+from ..xpath import *
 
 
 class TestExpressionMagic(unittest.TestCase):

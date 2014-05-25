@@ -5,7 +5,7 @@ import urllib.parse
 import logbook
 import copy
 
-from ..xpath.expression import Expression
+from ..xpath import Expression
 
 
 class RequestMaker(object):
@@ -20,12 +20,21 @@ class RequestMaker(object):
         self.param_value = self.working_data[target_parameter][0]
         self.target_parameter = target_parameter
 
-        self.features = features or []
+        self.features = features or {}
         self.requests_sent = 0
         self.checker = checker
         self.injector = injector
 
         self.logger = logbook.Logger("RequestMaker")
+
+    def add_features(self, features):
+        self.features.update(features)
+
+    def has_feature(self, feature):
+        return feature in self.features
+
+    def get_feature(self, cls):
+        return self.features[cls]
 
     def with_injector(self, injector):
         return RequestMaker(self.url, self.method, self.working_data,
@@ -35,9 +44,6 @@ class RequestMaker(object):
         new_dict = copy.deepcopy(self.working_data)
         new_dict[self.target_parameter] = [new_target_data]
         return urllib.parse.urlencode(new_dict, doseq=True)
-
-    def has_feature(self, feature):
-        return feature in self.features
 
     def send_raw_request(self, data):
         self.logger.debug("Sending request with data {}", data)
@@ -62,7 +68,7 @@ class RequestMaker(object):
         return (yield from self.send_request(query_data))
 
     def binary_search(self, expression, min=0, max=25):
-        if (yield from self.send_request(payload=expression > max)):
+        if (yield from self.send_payload(payload=expression > max)):
             return (yield from self.binary_search(expression, min=max, max=max*2))
 
         while True:
@@ -71,15 +77,15 @@ class RequestMaker(object):
 
             midpoint = (min + max) // 2
 
-            if (yield from self.send_request(payload=expression < midpoint)):
+            if (yield from self.send_payload(payload=expression < midpoint)):
                 max = midpoint - 1
-            elif (yield from self.send_request(payload=expression > midpoint)):
+            elif (yield from self.send_payload(payload=expression > midpoint)):
                 min = midpoint + 1
             else:
                 return midpoint
 
     def dumb_search(self, search_space, expression):
         for space in search_space:
-            result = yield from self.send_request(payload=expression == space)
+            result = yield from self.send_payload(payload=expression == space)
             if result:
                 return space

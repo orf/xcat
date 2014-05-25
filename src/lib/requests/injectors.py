@@ -1,5 +1,5 @@
 import logbook
-from ..xpath.expression import E, L
+from ..xpath import E, L
 
 # When injecting input into a vulnerable XPath query the injection point could be in several places (denoted by ?):
 # 1. /lib/book[name='?']        : Inside a string (single or double quotes) inside a []
@@ -13,6 +13,12 @@ from ..xpath.expression import E, L
 # There are no comment characters in XPath so we can't just cancel out any characters after the injection point
 # like you can with SQL. Each of those cases above requires a different payload to be output to keep the query intact.
 # Luckily the XPath syntax is very lenient.
+
+
+def get_all_injectors():
+    return {c.name():c
+            for c in [IntegerInjection, SingleQuoteStringInjection, DoubleQuoteStringInjection,
+                      AttributeNameInjection, PrefixElementNameInjection, PostfixElementNameInjection]}
 
 
 class Injection(object):
@@ -42,6 +48,10 @@ class Injection(object):
 
     def create_test_payloads(self):
         raise NotImplementedError()
+
+    @classmethod
+    def name(cls):
+        return cls.__name__.replace("Injection", "")
 
 
 class IntegerInjection(Injection):
@@ -80,7 +90,7 @@ class DoubleQuoteStringInjection(StringInjection):
     EXAMPLE = '/lib/book[name="?"]'
 
 
-class AttributeInjection(Injection):
+class AttributeNameInjection(Injection):
     EXAMPLE = "/lib/book[?=value]"
 
     def create_test_payloads(self):

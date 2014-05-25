@@ -1,10 +1,8 @@
 # I work out *how* to inject payloads into requests
-from urllib import parse
-from .maker import RequestMaker
+from .requester import RequestMaker
 from .injectors import IntegerInjection, SingleQuoteStringInjection, DoubleQuoteStringInjection,\
-    AttributeInjection, PrefixElementNameInjection, PostfixElementNameInjection
+    AttributeNameInjection, PrefixElementNameInjection, PostfixElementNameInjection
 from .. import features
-import copy
 import asyncio
 import logbook
 
@@ -20,13 +18,21 @@ class Detector(object):
         self.checker = checker
         self.requests = RequestMaker(url, method, working_data, target_parameter, checker=self.checker)
 
-    def get_requester(self, injector):
-        return self.requests.with_injector(injector)
+    def get_requester(self, injector, features=None):
+        requester = self.requests.with_injector(injector)
+        if features is not None:
+            requester.add_features(features)
+        return requester
 
     @asyncio.coroutine
     def detect_features(self, injector):
+
         req = self.get_requester(injector)
-        return (yield from features.get_available_features(req))
+        x = {
+            f.__class__: f
+            for f in (yield from features.get_available_features(req))
+        }
+        return x
 
     @asyncio.coroutine
     def detect_injectors(self):
@@ -39,12 +45,12 @@ class Detector(object):
         for cls in (IntegerInjection,
                     SingleQuoteStringInjection,
                     DoubleQuoteStringInjection,
-                    AttributeInjection,
+                    AttributeNameInjection,
                     PrefixElementNameInjection,
                     PostfixElementNameInjection):
             inst = cls(self)
             if (yield from inst.test()):
-                injectors.append(cls)
+                injectors.append(inst)
 
         return injectors
 
