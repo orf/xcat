@@ -5,13 +5,13 @@ import colorama
 import logbook
 import ipgetter
 
-from lib.requests.injectors import get_all_injectors
-from lib.executors import xpath1, xpath2, docfunction
-from lib.features.xpath_2 import XPath2
-from lib.features.entity_injection import EntityInjection
-from lib.xpath import E, N, document_uri, doc
-from lib.output import XMLOutput, JSONOutput
-from lib.requests import detector
+from .lib.requests.injectors import get_all_injectors
+from .lib.executors import xpath1, xpath2, docfunction
+from .lib.features.xpath_2 import XPath2
+from .lib.features.entity_injection import EntityInjection
+from .lib.xpath import E, N, document_uri, doc
+from .lib.output import XMLOutput, JSONOutput
+from .lib.requests import detector
 
 
 colorama.init()
@@ -85,8 +85,8 @@ def run(ctx, injector, xversion, output, format, public_ip):
 
     # Hack Hack Hack:
     # Setup an OOB http server instance on the doc feature class
-    from lib.features.doc import DocFeature
-    from lib.oob.http import OOBHttpServer
+    from .lib.features.doc import DocFeature
+    from .lib.oob.http import OOBHttpServer
     DocFeature.server = OOBHttpServer(host=public_ip)
 
     click.echo("Detecting features...")
@@ -126,6 +126,7 @@ def retrieve(ctx, query):
 @run.command(help="Read arbitrary files from the filesystem")
 @click.pass_context
 def file_shell(ctx):
+    # ToDo: Make this more like a shell, with a current directory etc. Make it more usable :)
     click.echo("There are three ways to read files on the file system using XPath:")
     click.echo(" 1. inject: Can read arbitrary text files as long as they do not contain any XML")
     click.echo(" 2. comment: Can read arbitrary text files containing XML snippets, but cannot contain '-->'")
@@ -241,5 +242,8 @@ def run_then_return(generator):
     return future.result()
 
 
-if __name__ == "__main__":
+def run():
     xcat(obj={})
+
+if __name__ == "__main__":
+    run()
