@@ -1,10 +1,13 @@
 # I work out *how* to inject payloads into requests
+import asyncio
+
+import logbook
+
 from .requester import RequestMaker
 from .injectors import IntegerInjection, SingleQuoteStringInjection, DoubleQuoteStringInjection,\
     AttributeNameInjection, PrefixElementNameInjection, PostfixElementNameInjection
 from .. import features
-import asyncio
-import logbook
+
 
 logger = logbook.Logger("Detector")
 

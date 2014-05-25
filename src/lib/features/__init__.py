@@ -1,5 +1,6 @@
-from ..xpath import Expression
 import asyncio
+
+from ..xpath import Expression
 
 
 class BaseFeature(object):

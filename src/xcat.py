@@ -1,14 +1,17 @@
 import asyncio
+
 import click
 import colorama
 import logbook
+import ipgetter
+
 from lib.requests.injectors import get_all_injectors
 from lib.executors import xpath1, xpath2, docfunction
 from lib.features.xpath_2 import XPath2
 from lib.xpath import E, N, document_uri
 from lib.output import XMLOutput, JSONOutput
 from lib.requests import detector
-import ipgetter
+
 
 colorama.init()
 

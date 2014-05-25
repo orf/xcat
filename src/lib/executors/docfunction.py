@@ -1,9 +1,10 @@
-from .xpath2 import XPath2Executor
 import asyncio
+import itertools
+
+from .xpath2 import XPath2Executor
 from . import XMLNode
 from ..features.doc import DocFeature
 from ..xpath import count, string
-import itertools
 
 
 class DocFunctionExecutor(XPath2Executor):

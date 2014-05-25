@@ -1,5 +1,4 @@
 from . import BaseFeature
-import asyncio
 from ..xpath import lower_case
 
 

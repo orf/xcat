@@ -1,9 +1,10 @@
 # I make HTTP requests
 
-import aiohttp
 import urllib.parse
-import logbook
 import copy
+
+import aiohttp
+import logbook
 
 from ..xpath import Expression
 

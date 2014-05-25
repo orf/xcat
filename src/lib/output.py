@@ -1,9 +1,10 @@
-import xmltodict
 import io
 from xml.sax.saxutils import XMLGenerator, escape
 import contextlib
 import json
 import abc
+
+import xmltodict
 
 
 class Output(abc.ABC):

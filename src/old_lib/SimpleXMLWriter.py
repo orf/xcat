@@ -87,7 +87,8 @@
 # </pre>
 ##
 
-import re, sys, string
+import re
+import string
 
 try:
     unicode("")

@@ -1,10 +1,6 @@
 # XCat
 # Command line utility for extracting XML documents through XPath injection vulnerabilities
 import argparse
-from twisted.internet import reactor, defer
-from lib import SimpleXMLWriter
-from lib import payloads as payloadlib
-from twisted.web import server, resource
 import base64
 import sys
 import hashlib
@@ -12,6 +8,12 @@ import time
 import copy
 import socket
 import itertools
+
+from twisted.internet import reactor, defer
+from lib import SimpleXMLWriter
+from lib import payloads as payloadlib
+from twisted.web import server, resource
+
 
 __VERSION__ = 0.7
 

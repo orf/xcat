@@ -1,5 +1,6 @@
 import asyncio
 import string
+
 from . import BaseExecutor, XMLNode
 from ..xpath import count, string_length, substring, translate, normalize_space
 from ..features.substring_search import EfficientSubstringSearch

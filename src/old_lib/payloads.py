@@ -1,13 +1,15 @@
 # Payloads.py
 # Makes XPath 1.0 and 2.0 payload strings
+import string
+import urllib
+
 from twisted.web.iweb import IBodyProducer
 from zope.interface import implements
 from twisted.internet.protocol import Protocol
-import string
 from twisted.web.client import Agent
 from twisted.internet import reactor, defer
 from twisted.web.http_headers import Headers
-import urllib
+
 
 class Payload(object):
     def __init__(self, payload, can_lower=False, normalization=False, takes_codepoints=False):
