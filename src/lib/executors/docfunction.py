@@ -38,6 +38,9 @@ class DocFunctionExecutor(XPath2Executor):
             string(count(node.comments))
         ))
 
+        if result is None:
+            return (yield from super().retrieve_node(node))
+
         node_name = result[0]
         attribute_count, child_count, text_count, comment_count = map(int, result[1:])
         attribute_queries = itertools.chain(

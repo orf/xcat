@@ -35,12 +35,14 @@ from .substring_search import EfficientSubstringSearch
 from .xpath_2 import XPath2
 from .codepointsearch import CodepointSearch
 from .doc import DocFeature
+from .entity_injection import EntityInjection
 
 _features = [
     XPath2,
     EfficientSubstringSearch,
     CodepointSearch,
-    DocFeature
+    DocFeature,
+    EntityInjection
 ]
 
 

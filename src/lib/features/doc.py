@@ -32,7 +32,6 @@ class DocFeature(BaseFeature):
             if r:
                 self.working_port = port
                 return True
-
         return False
 
     @asyncio.coroutine
@@ -42,7 +41,7 @@ class DocFeature(BaseFeature):
     @asyncio.coroutine
     def execute_many(self, requester, expressions):
         if not self.server.started:
-            raise RuntimeError("DocFeature.execute() called when server is not started")
+            yield from self.server.start()
 
         identifier, future = self.server.expect_data()
         expressions = list(expressions)
@@ -60,5 +59,3 @@ class DocFeature(BaseFeature):
             #logger.error("5 second timeout expired waiting for doc() postback.")
             return None
         return result["d"]
-
-

