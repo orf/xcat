@@ -13,7 +13,6 @@ class OOBHttpRequestHandler(server.ServerHttpProtocol):
 
         headers = email.message.Message()
         for hdr, val in message.headers:
-            print(hdr, val)
             headers.add_header(hdr, val)
 
         response = aiohttp.Response(
