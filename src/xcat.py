@@ -7,11 +7,13 @@ import ipgetter
 
 from .lib.requests.injectors import get_all_injectors
 from .lib.executors import xpath1, xpath2, docfunction
+from .lib.features.doc import DocFeature
 from .lib.features.xpath_2 import XPath2
 from .lib.features.entity_injection import EntityInjection
 from .lib.xpath import E, N, document_uri, doc
 from .lib.output import XMLOutput, JSONOutput
 from .lib.requests import detector
+from .lib.oob.http import OOBHttpServer
 
 
 colorama.init()
@@ -30,8 +32,10 @@ colorama.init()
 
 @click.option("--loglevel", type=click.Choice(["debug", "info", "warn", "error"]), default="error")
 @click.option("--logfile", type=click.File("wb"), default="-")
+
+@click.option("--public-ip", default="autodetect", help="Public IP address to use with OOB connections")
 @click.pass_context
-def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile):
+def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, public_ip):
     null_handler = logbook.NullHandler()
     null_handler.push_application()
 
@@ -46,6 +50,18 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
     ctx.obj["detector"] = detector.Detector(target, method, arguments, target_parameter, checker=checker)
     ctx.obj["target_param"] = target_parameter
 
+    if public_ip == "autodetect":
+        try:
+            public_ip = ipgetter.IPgetter().get_externalip()
+        except Exception:
+            click.echo("Could not detect public IP, please explicitly specify")
+            ctx.exit()
+        click.echo("External IP: {}".format(public_ip))
+
+    # Hack Hack Hack:
+    # Setup an OOB http server instance on the doc feature class
+    DocFeature.server = OOBHttpServer(host=public_ip)
+
 
 @xcat.group()
 @click.option("--injector", type=click.Choice(["autodetect"] + list(get_all_injectors().keys())),
@@ -54,9 +70,8 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
               default="autodetect", help="XPath version to use")
 @click.option("--output", type=click.File('wb'), default="-", help="Location to output XML to")
 @click.option("--format", type=click.Choice(["xml", "json"]), default="xml", help="Format for output")
-@click.option("--public-ip", default="autodetect", help="Public IP address to use with OOB connections")
 @click.pass_context
-def run(ctx, injector, xversion, output, format, public_ip):
+def run(ctx, injector, xversion, output, format):
     detector = ctx.obj["detector"]
 
     if injector == "autodetect":
@@ -74,20 +89,6 @@ def run(ctx, injector, xversion, output, format, public_ip):
         injector = get_all_injectors()[injector]
 
     click.echo("Injecting using {}".format(injector.name()))
-
-    if public_ip == "autodetect":
-        try:
-            public_ip = ipgetter.IPgetter().get_externalip()
-        except Exception:
-            click.echo("Could not detect public IP, please explicitly specify")
-            ctx.exit()
-        click.echo("External IP: {}".format(public_ip))
-
-    # Hack Hack Hack:
-    # Setup an OOB http server instance on the doc feature class
-    from .lib.features.doc import DocFeature
-    from .lib.oob.http import OOBHttpServer
-    DocFeature.server = OOBHttpServer(host=public_ip)
 
     click.echo("Detecting features...")
     features = run_then_return(detector.detect_features(injector))

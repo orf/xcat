@@ -2,29 +2,35 @@ XCat
 ====
 
 XCat is a command line program that aides in the exploitation of XPath injection vulnerabilities.
-It boasts a wide range of features and can utilize the more advanced features of the XPath 2.0 specification (pattern matching, unicode normilization and even http requests) or gracefully degrade to using XPath 1.0 if they are not available.
+It boasts a wide range of features and can utilize the more advanced features of the XPath 2.0 specification (pattern matching, unicode normalization and even http requests) or gracefully degrade to using XPath 1.0 if they are not available.
 
-XCat is built to exploit boolean XPath injections (Where only one bit of data can be extracted in one request) and it requires you to manually identifiy the exploit first, this does not do that for you.
+XCat is built to exploit boolean XPath injections (Where only one bit of data can be extracted in one request) and it requires you to manually identify the exploit first, this does not do that for you.
 
 Features
 --------
 * Exploits both GET and POST attacks
 * Extracts all nodes, comments, attributes and data from the entire XML document
-* Small and lightweight (only dependency is [Twisted](http://www.twistedmatrix.com))
+* Small and lightweight (only a few pure-python dependencies)
 * Parallel requests
 * XPath 2.0 supported (with graceful degrading to 1.0)
-* [Regex](http://www.w3.org/TR/xpath-functions/#func-matches) pattern matching to reduce character search space
-* [Unicode normalization](http://www.w3.org/TR/xpath-functions/#func-normalize-unicode)
 * Advanced data postback through HTTP (see below)
 * Arbitrarily read XML files on the servers file system via the doc() function (see below)
 * Arbitrarily read text files on the servers file system via crafted SYSTEM entities
 
+Features planned for future releases:
+* [Regex](http://www.w3.org/TR/xpath-functions/#func-matches) pattern matching to reduce character search space
+* [Unicode normalization](http://www.w3.org/TR/xpath-functions/#func-normalize-unicode)
+
 Examples
 --------
 If you run a windows machine you can install IronPython and start the example application (example_application/ironpython_site.py).
-The simplest command you can run on this site is:
+The syntax for the most simple command you can execute against this server is:
 
-`python xcat.py --true "Book found" --arg "title=Bible" --method POST --autopwn http://localhost:80`
+`xcat http://localhost:80 title=Bible title "Book found" run retrieve`
+
+This command specifies the target URL (our localhost server), the GET or POST data to send (title=Bible), the vulnerable
+parameter (title) and a string to indicate a true response (Book found). Executing this will retrieve the entire XML file
+being queried.
 
 You have to specify a condition keyword or HTTP status code (true, false, error), an argument for the attack to be appended to and a HTTP method to use.
 The --autopwn flag will make xcat automatically detect more exotic features (xpath version, quote character and various out of bound attacks):
@@ -69,7 +75,4 @@ Possibly the most advanced feature of XCat is its 'HTTP postback' feature. The X
 This is far more efficient than iterating over the string character by character and can greatly reduce the retrieval times.
 
 You can (ab)use this function to load XML file on the system, as long as you have read permissions over it, allowing you to retrieve lots of lovely XML configuration files - you can jump into a pseudo-shell within XCat by using the --fileshell flag and enter any file path.
-
-
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/orf/xcat/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
 
