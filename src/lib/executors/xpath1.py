@@ -69,9 +69,11 @@ class XPath1Executor(BaseExecutor):
         return node_text.strip()
 
     @asyncio.coroutine
-    def get_comments(self):
-        # ToDo: Make this work
-        pass
+    def get_comments(self, node, comment_count):
+        comments = []
+        for comment in node.comments(comment_count):
+            comments.append((yield from self.get_string(comment)))
+        return comments
 
     @asyncio.coroutine
     def retrieve_node(self, node):
@@ -86,9 +88,7 @@ class XPath1Executor(BaseExecutor):
         node_text = yield from self.get_node_text(node, text_count)
 
         comment_count = yield from self.count_nodes(node.comments)
-        comments = []
-        for comment in node.comments(comment_count):
-            comments.append((yield from self.get_string(comment)))
+        comments = yield from self.get_comments(node, comment_count)
 
         return XMLNode(
             name=node_name,

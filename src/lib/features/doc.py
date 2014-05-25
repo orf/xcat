@@ -42,6 +42,11 @@ class DocFeature(BaseFeature):
             raise RuntimeError("DocFeature.execute() called when server is not started")
 
         identifier, future = self.server.expect_data()
+        expressions = list(expressions)
+
+        if len(expressions) == 0:
+            return []
+
         yield from requester.send_payload(
             doc(concat("{}/{}?".format(self.server.location, identifier),
                        *[concat("d=", encode_for_uri(e), "&") for e in expressions]))
@@ -51,6 +56,6 @@ class DocFeature(BaseFeature):
         except asyncio.TimeoutError:
             #logger.error("5 second timeout expired waiting for doc() postback.")
             return None
-        return result
+        return result["d"]
 
 
