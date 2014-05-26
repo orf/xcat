@@ -28,7 +28,7 @@ colorama.init()
 
 @click.option("--true", "detection_method", flag_value="true", default=True, help="match_string indicates a true response")
 @click.option("--false", "detection_method", flag_value="false", help="match_string indicates a false response")
-@click.option("--error", "detection_method", flag_value="error", help="match_string indicates an error response")
+#@click.option("--error", "detection_method", flag_value="error", help="match_string indicates an error response")
 
 @click.option("--loglevel", type=click.Choice(["debug", "info", "warn", "error"]), default="error")
 @click.option("--logfile", type=click.File("wb"), default="-")
@@ -68,10 +68,8 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
               default="autodetect", help="Type of injection to use.")
 @click.option("--xversion", type=click.Choice(["autodetect", "1","2"]),
               default="autodetect", help="XPath version to use")
-@click.option("--output", type=click.File('wb'), default="-", help="Location to output XML to")
-@click.option("--format", type=click.Choice(["xml", "json"]), default="xml", help="Format for output")
 @click.pass_context
-def run(ctx, injector, xversion, output, format):
+def run(ctx, injector, xversion):
     detector = ctx.obj["detector"]
 
     if injector == "autodetect":
@@ -107,21 +105,22 @@ def run(ctx, injector, xversion, output, format):
     if DocFeature in features:
         executor = docfunction.DocFunctionExecutor
 
-    output_class = XMLOutput if format == "xml" else JSONOutput
-
     ctx.obj["injector"] = injector
     ctx.obj["requester"] = detector.get_requester(injector, features=features)
     ctx.obj["executor"] = executor(ctx.obj["requester"])
-    ctx.obj["output"] = output_class(output)
 
 
 @run.command(help="Attempt to retrieve the whole XML document")
 @click.option("--query", default="/*[1]", help="Query to retrieve. Defaults to root node (/*[1])")
+@click.option("--output", type=click.File('wb'), default="-", help="Location to output XML to")
+@click.option("--format", type=click.Choice(["xml", "json"]), default="xml", help="Format for output")
 @click.pass_context
-def retrieve(ctx, query):
+def retrieve(ctx, query, output, format):
     click.echo("Retrieving {}".format(query))
     executor = ctx.obj["executor"]
-    run_then_return(display_results(ctx.obj["output"], executor, E(query)))
+
+    output_class = XMLOutput if format == "xml" else JSONOutput
+    run_then_return(display_results(output_class(output), executor, E(query)))
 
 
 @run.command(help="Read arbitrary files from the filesystem")
@@ -139,7 +138,7 @@ def file_shell(ctx):
     entity_injection = ctx.obj["requester"].get_feature(EntityInjection)
 
     commands = {
-        "doc": lambda p: run_then_return(display_results(ctx.obj["output"], ctx.obj["executor"], doc(p).add_path("/*[1]"))),
+        "doc": lambda p: run_then_return(display_results(XMLOutput(), ctx.obj["executor"], doc(p).add_path("/*[1]"))),
         "inject": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path))),
         "comment": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path, True))),
     }
@@ -151,7 +150,7 @@ def file_shell(ctx):
     mode = "inject"
 
     while True:
-        file_path = click.prompt("File URI")
+        file_path = click.prompt(">> ", prompt_suffix="")
         if file_path == "uri":
             executor = ctx.obj["executor"]
             uri = run_then_return(
@@ -166,8 +165,9 @@ def file_shell(ctx):
         else:
             try:
                 commands[mode](file_path)
-            except Exception:
+            except Exception as e:
                 click.echo("Error reading file. Try another mode")
+
 
 
 @run.command(help="Get the URI of the document being queried")

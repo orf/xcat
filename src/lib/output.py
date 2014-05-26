@@ -5,11 +5,12 @@ import json
 import abc
 
 import xmltodict
+import click
 
 
 class Output(abc.ABC):
-    def __init__(self, fd):
-        self.output = fd
+    def __init__(self, fd=None):
+        self.output = fd or click.get_text_stream("stdout", encoding="utf-8")
 
     @abc.abstractmethod
     def output_start_node(self, node):
@@ -57,7 +58,7 @@ class XMLGeneratorWithComments(XMLGenerator):
 
 
 class XMLOutput(Output):
-    def __init__(self, fd):
+    def __init__(self, fd=None):
         super().__init__(fd)
         self.writer = XMLGeneratorWithComments(self.output, "utf-8")
 

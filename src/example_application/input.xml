@@ -1,17 +1,19 @@
-<lib test="1" lol="3" omg="hahanoway">
+<lib test="1" attribute1="3">
     <book>
         <!-- Comment -->
         <title>Bible</title>
-        <description>
-            The word of god in
-            all of its glory
+        <description another="attribute">
+            The holy book
         </description>
-	<price>1</price>
+	    <price>1</price>
     </book>
 
     <book>
         <title>Davinci code</title>
-        <description>A book</description>
-	<price>10</price>
+        <description>
+            <!-- Comments galore -->
+            A book
+        </description>
+	    <price>10</price>
     </book>
 </lib>
