@@ -1,2 +1,0 @@
-twisted==12.1.0
-zope.interface==4.0.1

