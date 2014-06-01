@@ -1,3 +1,3 @@
-from src import xcat
+from xcat import xcat
 
 xcat.run()
