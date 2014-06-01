@@ -34,15 +34,17 @@ class BaseFeature(object):
 from .substring_search import EfficientSubstringSearch
 from .xpath_2 import XPath2
 from .codepointsearch import CodepointSearch
-from .doc import DocFeature
+from .oob_http import OOBDocFeature
 from .entity_injection import EntityInjection
+from .doc import DocFeature
 
 _features = [
     XPath2,
     EfficientSubstringSearch,
     CodepointSearch,
-    DocFeature,
-    EntityInjection
+    OOBDocFeature,
+    EntityInjection,
+    DocFeature
 ]
 
 

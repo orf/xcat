@@ -1,11 +1,11 @@
-from .doc import DocFeature
+from .oob_http import OOBDocFeature
 from ..oob import http
 from ..xpath import doc, concat, encode_for_uri
 import asyncio
 
 
-class EntityInjection(DocFeature):
-    NAME = "Entity injection"
+class EntityInjection(OOBDocFeature):
+    NAME = "Read local text files"
 
     def TEST(self):
         return [

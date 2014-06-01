@@ -4,8 +4,8 @@ import asyncio
 import logbook
 
 from .requester import RequestMaker
-from .injectors import IntegerInjection, SingleQuoteStringInjection, DoubleQuoteStringInjection,\
-    AttributeNameInjection, PrefixElementNameInjection, PostfixElementNameInjection
+from .injectors import IntegerInjection, StringInjection, AttributeNameInjection, \
+    FunctionCallInjection, ElementNameInjection
 from .. import features
 
 
@@ -20,6 +20,14 @@ class Detector(object):
     def __init__(self, url, method, working_data, target_parameter, checker):
         self.checker = checker
         self.requests = RequestMaker(url, method, working_data, target_parameter, checker=self.checker)
+
+    def change_parameter(self, target_parameter):
+        """
+        :param target_parameter: A parameter name that the returned detector targets
+        :return: A Detector that targets the given URI parameter
+        """
+        return Detector(self.requests.url, self.requests.method,
+                        self.requests.working_data, target_parameter, self.checker)
 
     def get_requester(self, injector, features=None):
         requester = self.requests.with_injector(injector)
@@ -46,11 +54,10 @@ class Detector(object):
         injectors = []
 
         for cls in (IntegerInjection,
-                    SingleQuoteStringInjection,
-                    DoubleQuoteStringInjection,
+                    StringInjection,
                     AttributeNameInjection,
-                    PrefixElementNameInjection,
-                    PostfixElementNameInjection):
+                    ElementNameInjection,
+                    FunctionCallInjection):
             inst = cls(self)
             if (yield from inst.test()):
                 injectors.append(inst)

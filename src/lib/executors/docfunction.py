@@ -3,7 +3,7 @@ import itertools
 
 from .xpath2 import XPath2Executor
 from . import XMLNode
-from ..features.doc import DocFeature
+from ..features.oob_http import OOBDocFeature
 from ..xpath import count, string
 
 
@@ -11,7 +11,7 @@ class DocFunctionExecutor(XPath2Executor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.feature = self.requester.get_feature(DocFeature)
+        self.feature = self.requester.get_feature(OOBDocFeature)
 
     @asyncio.coroutine
     def get_string(self, expression):
