@@ -157,4 +157,3 @@ of which can then be queried and sent back to XCat in another HTTP request.
 
 [This OWASP wiki page](https://www.owasp.org/index.php/XML_External_Entity_(XXE)_Processing) covers XML entity
 injection this technique in more detail.
-
