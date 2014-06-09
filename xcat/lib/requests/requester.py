@@ -1,6 +1,6 @@
 # I make HTTP requests
 
-import urllib.parse
+from urllib import parse
 import copy
 
 import aiohttp
@@ -14,7 +14,7 @@ class RequestMaker(object):
         self.url = url
         self.method = method
         if isinstance(working_data, str):
-            self.working_data = urllib.parse.parse_qs(working_data)
+            self.working_data = parse.parse_qs(working_data)
         else:
             self.working_data = working_data
 
@@ -54,13 +54,13 @@ class RequestMaker(object):
     def get_query_data(self, new_target_data):
         new_dict = copy.deepcopy(self.working_data)
         new_dict[self.target_parameter] = [new_target_data]
-        return urllib.parse.urlencode(new_dict, doseq=True)
+        return parse.urlencode(new_dict, doseq=True)
 
     def send_raw_request(self, data):
         self.logger.debug("Sending request with data {}", data)
 
         if isinstance(data, dict):
-            data = urllib.parse.urlencode(data, doseq=True)
+            data = parse.urlencode(data, doseq=True)
         elif isinstance(data, Expression):
             # Make data
             data = str(data)

@@ -1,9 +1,8 @@
 # I work out *how* to inject payloads into requests
 import asyncio
-
+import copy
 import logbook
 
-from .requester import RequestMaker
 from .injectors import IntegerInjection, StringInjection, AttributeNameInjection, \
     FunctionCallInjection, ElementNameInjection
 from .. import features
@@ -17,17 +16,16 @@ class DetectionException(Exception):
 
 
 class Detector(object):
-    def __init__(self, url, method, working_data, target_parameter, checker):
+    def __init__(self, checker, requestmaker):
         self.checker = checker
-        self.requests = RequestMaker(url, method, working_data, target_parameter, checker=self.checker)
+        self.requests = requestmaker
 
     def change_parameter(self, target_parameter):
         """
         :param target_parameter: A parameter name that the returned detector targets
         :return: A Detector that targets the given URI parameter
         """
-        return Detector(self.requests.url, self.requests.method,
-                        self.requests.working_data, target_parameter, self.checker)
+        return Detector(self.checker, copy.deepcopy(self.requests))
 
     def get_requester(self, injector, features=None):
         requester = self.requests.with_injector(injector)

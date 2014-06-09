@@ -1,6 +1,6 @@
 import unittest
 
-from ..xpath import *
+from ..lib.xpath import *
 
 
 class TestExpressionMagic(unittest.TestCase):

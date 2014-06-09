@@ -14,6 +14,7 @@ from .lib.features.entity_injection import EntityInjection
 from .lib.xpath import E, N, document_uri, doc
 from .lib.output import XMLOutput, JSONOutput
 from .lib.requests import detector
+from .lib.requests.requester import RequestMaker
 from .lib.oob.http import OOBHttpServer
 
 
@@ -60,9 +61,8 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
     # Setup an OOB http server instance on the doc feature class
     OOBDocFeature.server = OOBHttpServer(host=public_ip)
     ctx.obj["target_param"] = target_parameter
-    ctx.obj["detector"] = detector.Detector(target, method, arguments,
-                                            target_parameter if target_parameter != "*" else None,
-                                            checker=checker)
+    request_maker = RequestMaker(target, method, arguments, target_parameter, checker=checker)
+    ctx.obj["detector"] = detector.Detector(checker, request_maker)
 
 
 
