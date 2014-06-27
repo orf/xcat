@@ -13,4 +13,7 @@ setup(name="xcat",
           'console_scripts': [
               'xcat = xcat.xcat:run'
           ]
-      })
+      },
+      classifiers=[
+          'Programming Language :: Python :: 3',
+      ])
