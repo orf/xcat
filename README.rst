@@ -9,6 +9,8 @@ XCat is built to exploit boolean XPath injections (Where only one bit of data ca
 and it requires you to manually identify the exploit first, this does not do that for you. Check out the docs 
 at http://xcat.readthedocs.org/ for more info.
 
+**Note:** This requires Python 3.4 to run.
+
 
 An example::
 
