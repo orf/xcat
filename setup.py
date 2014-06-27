@@ -1,8 +1,14 @@
 from setuptools import find_packages, setup
+import os
+
+readme = ""
+if os.path.exists("README.rst"):
+    with open("README.rst") as f:
+        readme = f.read()
 
 
 setup(name="xcat",
-      version="0.6",
+      version="0.6.1",
       description="",
       author="Tom Forbes",
       author_email="tom@tomforb.es",
@@ -14,6 +20,7 @@ setup(name="xcat",
               'xcat = xcat.xcat:run'
           ]
       },
+      long_description=readme,
       classifiers=[
           'Programming Language :: Python :: 3',
       ])

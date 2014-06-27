@@ -7,7 +7,7 @@ and utilize out of bound HTTP requests to make the server send data directly to 
 
 XCat is built to exploit boolean XPath injections (Where only one bit of data can be extracted in one request)
 and it requires you to manually identify the exploit first, this does not do that for you. Check out the docs 
-at <http://xcat.readthedocs.org/>`_. for more info.
+at http://xcat.readthedocs.org/ for more info.
 
 
 An example::
