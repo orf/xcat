@@ -9,7 +9,6 @@ if os.path.exists("README.rst"):
 
 setup(name="xcat",
       version="0.6.1",
-      description="",
       author="Tom Forbes",
       author_email="tom@tomforb.es",
       package_dir = {'xcat': 'xcat'},
