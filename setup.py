@@ -20,7 +20,9 @@ setup(name="xcat",
               'xcat = xcat.xcat:run'
           ]
       },
+      description="A command line tool to automate the exploitation of blind XPath injection vulnerabilities",
       long_description=readme,
+      url="https://github.com/orf/xcat",
       classifiers=[
           'Programming Language :: Python :: 3',
       ])
