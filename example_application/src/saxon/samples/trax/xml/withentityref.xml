@@ -1,0 +1,13 @@
+<?xml version='1.0'?>
+<!DOCTYPE foo:document [
+<!ENTITY misc SYSTEM "misc.txt">
+]>
+<foo:document 
+		  xmlns:foo="http://apache.org/foo"
+		  xmlns:bar="http://apache.org/bar"
+		  file-name="test"
+         file-path="work"
+		  creation-date="971255692078">
+<bar:element>MyBar</bar:element>
+&misc;
+</foo:document>

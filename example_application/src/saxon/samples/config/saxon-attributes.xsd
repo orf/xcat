@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+    elementFormDefault="qualified" 
+    targetNamespace="http://saxon.sf.net/" 
+    xmlns:saxon="http://saxon.sf.net/"
+    xmlns:c="http://saxon.sf.net/ns/configuration">
+    
+  <xs:annotation>
+    <xs:documentation>
+        This schema document defines serialization parameters in the Saxon namespace,
+        that can appear in the serialization element of the configuration file.
+    </xs:documentation>
+  </xs:annotation>  
+  
+  <xs:attribute name="double-space" type="c:listOfQNameType"/>  
+  <xs:attribute name="indent-spaces" type="xs:integer"/>
+  <xs:attribute name="suppress-indentation" type="c:listOfQNameType"/>
+  <xs:attribute name="character-representation" type="xs:string"/>
+  <xs:attribute name="next-in-chain" type="xs:anyURI"/>
+  <xs:attribute name="recognize-binary" type="c:yesOrNoType"/>
+  <xs:attribute name="require-well-formed" type="c:yesOrNoType"/>
+  <xs:attribute name="supply-source-locator" type="c:yesOrNoType"/>
+
+</xs:schema>

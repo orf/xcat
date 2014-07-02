@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding="iso-8859-1"?>
+<cities>
+  <city name="Paris" country="France">Bonjour</city>
+  <city name="Madrid" country="Spain">Hola!</city>
+  <city name="Vienna" country="Austria">Grüß Gott</city>
+  <city name="Helsinki" country="Finland">Hyvää päivää</city>
+  <city name="Rome" country="Italy">Ciao</city>
+  <town name="Reading" country="England">Hi</town>
+</cities>

@@ -3,20 +3,21 @@ About XCat
 
 Features
 --------
-* Exploits both GET and POST attacks
-* Extracts all nodes, comments, attributes and data from the entire XML document
-* Small and lightweight (only a few pure-python dependencies)
-* Parallel requests
-* XPath 2.0 supported (with graceful degrading to 1.0)
-* Advanced data postback through HTTP (see below)
-* Arbitrarily read XML files on the servers file system via the doc() function (see below)
-* Arbitrarily read text files on the servers file system via crafted SYSTEM entities
+
+    * Exploits both GET and POST attacks
+    * Extracts all nodes, comments, attributes and data from the entire XML document
+    * Small and lightweight (only a few pure-python dependencies)
+    * Parallel requests
+    * XPath 2.0 supported (with graceful degrading to 1.0)
+    * Advanced data postback through HTTP (see below)
+    * Arbitrarily read XML files on the servers file system via the doc() function (see below)
+    * Arbitrarily read text files on the servers file system via crafted SYSTEM entities
 
 Features planned for future releases:
 
-* [Regex](http://www.w3.org/TR/xpath-functions/#func-matches) pattern matching to reduce character search space
-* [Unicode normalization](http://www.w3.org/TR/xpath-functions/#func-normalize-unicode)
-* Error based retrieval
+    * [Regex](http://www.w3.org/TR/xpath-functions/#func-matches) pattern matching to reduce character search space
+    * [Unicode normalization](http://www.w3.org/TR/xpath-functions/#func-normalize-unicode)
+    * Error based retrieval
 
 Examples
 --------

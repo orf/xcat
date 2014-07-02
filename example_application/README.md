@@ -1,0 +1,17 @@
+XCat example application
+========================
+
+Requires [Jython](http://jython.orf/)
+
+Support for XPath 2.0 is not great, so I had to choose between a [Java/.Net library](http://saxon.sourceforge.net/) or a [.NET one](http://www.xmlprime.com/xmlprime/download.htm).
+
+This application uses Saxon's (rather good) XPath 2.0 .NET library, which can be [downloaded here](http://saxon.sourceforge.net/#F9.4HE).
+Install then copy all the .dll and .xml files (saxon9he-api.dll and saxon9he.dll) to the same directory as input.xml and ironpython_site.py, then run:
+
+	ipy ironpython_site.py
+	
+to run the sample application. You can use this to try out XCat - the true keyword is "Book found" and an example request string (for xcats --arg flag) is "title=Bible". Run XCat with the flags below to dump the XML file:
+
+	xcat.py --true "Book found" --arg "title=Bible" --method POST http://localhost:80/ --autopwn
+	
+Have a play with the --regex and --connectback flags
