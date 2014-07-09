@@ -26,6 +26,9 @@ class Output(abc.ABC):
     def output_finished(self):
         return  # Optional
 
+    def flush(self):
+        self.output.flush()
+
 
 class XMLGeneratorWithComments(XMLGenerator):
     def __init__(self, *args, **kwargs):
@@ -64,6 +67,7 @@ class XMLOutput(Output):
 
     def output_started(self):
         self.writer.startDocument()
+        self.flush()
 
     def output_start_node(self, node):
         self.writer.startElement(node.name, node.attributes)
@@ -73,12 +77,15 @@ class XMLOutput(Output):
 
         if node.text:
             self.writer.characters(node.text)
+        self.flush()
 
     def output_end_node(self, node):
         self.writer.endElement(node.name)
+        self.flush()
 
     def output_finished(self):
         self.writer.endDocument()
+        self.flush()
 
 
 class JSONOutput(XMLOutput):
