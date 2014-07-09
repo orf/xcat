@@ -28,7 +28,9 @@ Features
 
 Installation
 ------------
-You can install XCat via pip: `pip install xcat`. You should then have an `xcat` command available.
+You can install XCat via pip: `pip install xcat`. You should then have an `xcat` command available. XCat comes with 
+an example application you can test against, this can be found in the `example_application` directory. Check out it's 
+readme file to see how to run it.
 
 
 Examples
@@ -36,23 +38,23 @@ Examples
 If you run a windows machine you can install Jython and start the example application (example_application/ironpython_site.py).
 The syntax for a simple command you can execute against this server is:
 
-    xcat --public-ip="localhost" http://localhost:80 title=Bible title "Book found" run retrieve
+    xcat ---method=GET http://localhost:8080 title=Foundation title "1 results found" run retrieve
 
-This command specifies the target URL (our localhost server), the GET or POST data to send (title=Bible), the vulnerable
-parameter (title) and a string to indicate a true response (Book found). Executing this will retrieve the entire XML file
-being queried.
+This command specifies the HTTP method (GET), target URL (our localhost server), the GET or POST) data to send (title=Bible),
+the vulnerable parameter (title) and a string to indicate a true response (Book found). Executing this will retrieve
+the entire XML file being queried.
 
-    >> xcat --public-ip="localhost" http://localhost:80 title=Bible title "Book found" run retrieve
-    Injecting using SingleQuoteString
+    >> xcat --method=GET http://localhost:8080 title=Foundation title "1 results found" run retrieve
+    Injecting using FunctionCall
     Detecting features...
-    Supported features: XPath 2, String to codepoints, External DOC function, Entity injection, Substring search speedup
+    Supported features: String to codepoints, XPath 2, Read local XML files, Substring search speedup
     Retrieving /*[1]
     <?xml version="1.0" encoding="utf-8"?>
-    <lib test="1" attribute1="3">
-        <book>
-                <!-- Comment -->
-                <title>Bible</title>
-                <description another="attribute">The holy book</description>
+    <library>
+	    <rentals>
+		    <books>
+                <!-- A comment -->
+                <book>
     ...
 
 The the retrieval of documents can be sped up in a number of different ways, such as using the doc function to make the
@@ -61,14 +63,15 @@ be viewed by using the `test_injection` command. This will display information a
 type (integer, string, path name) and various features that XCat has is able to use. XCat knows which features
 are best and will gracefully degrade if they fail for any reason.
 
-    >> xcat --public-ip="localhost" http://localhost:80 "title=Bible" title "Book found" test_injection
+    >> xcat --method=GET --public-ip="localhost" http://localhost:8080 title=Foundation title "1 results found" test_injection
     Testing parameter title:
-    SingleQuoteStringInjection:             /lib/book[name='?']
-        - XPath2
+    FunctionCallInjection:          /lib/something[function(?)]
+        - EfficientSubstringSearch
+        - OOBDocFeature
         - CodepointSearch
+        - XPath2
         - DocFeature
         - EntityInjection
-        - EfficientSubstringSearch
 
 Usage
 -----
@@ -77,6 +80,7 @@ do this for you, so you have to do the initial hard work of finding a vulnerabil
 reach, URL encoded arguments, the vulnerable parameter and a string to match in the response. The initial data given
 must be valid and trigger either a true or false response.
 
+    >> xcat --help
     Usage: xcat [OPTIONS] TARGET ARGUMENTS TARGET_PARAMETER MATCH_STRING
                       COMMAND [ARGS]...
 
@@ -87,9 +91,10 @@ must be valid and trigger either a true or false response.
       --loglevel [debug|info|warn|error]
       --logfile FILENAME
       --public-ip TEXT                Public IP address to use with OOB
-                                      connections
+                                      connections (use 'autodetect' to auto-detect
+                                      value)
       --help                          Show this message and exit.
-
+    
     Commands:
       run
       test_injection  Test parameter for injectability
@@ -97,7 +102,7 @@ must be valid and trigger either a true or false response.
 The two most useful commands are `run retrieve` and `run file_shell`. The first allows you to retrieve the whole document
 being processed by the query in either XML or JSON format and specify a file for it to be dumped to.
 
-    Usage: xcat-script.py run retrieve [OPTIONS]
+    Usage: xcat run retrieve [OPTIONS]
 
     Attempt to retrieve the whole XML document
 
@@ -110,8 +115,8 @@ being processed by the query in either XML or JSON format and specify a file for
 The second command takes no additional arguments but enables you to read arbitrary files on the filesystem. This only
 works if the vulnerable parameter supports the doc feature (and optionally entity injection):
 
-    >> xcat --public-ip="localhost" http://localhost:80 "title=Bible" title "Book found" run file_shell
-    Injecting using SingleQuoteString
+    >> xcat --method=GET --public-ip="localhost" http://localhost:8080 title=Foundation title "1 results found" run file_shell
+    Injecting using FunctionCall
     Detecting features...
     Supported features: XPath 2, String to codepoints, External DOC function, Entity injection, Substring search speedup
     There are three ways to read files on the file system using XPath:
