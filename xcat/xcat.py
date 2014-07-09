@@ -35,7 +35,7 @@ colorama.init()
 @click.option("--loglevel", type=click.Choice(["debug", "info", "warn", "error"]), default="error")
 @click.option("--logfile", type=click.File("w", encoding="utf-8"), default="-")
 
-@click.option("--public-ip", default="autodetect", help="Public IP address to use with OOB connections")
+@click.option("--public-ip", help="Public IP address to use with OOB connections (use 'autodetect' to auto-detect value)")
 @click.pass_context
 def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, public_ip):
     null_handler = logbook.NullHandler()
@@ -57,9 +57,11 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
             ctx.exit()
         click.echo("External IP: {}".format(public_ip))
 
-    # Hack Hack Hack:
-    # Setup an OOB http server instance on the doc feature class
-    OOBDocFeature.server = OOBHttpServer(host=public_ip)
+    if public_ip is not None:
+        # Hack Hack Hack:
+        # Setup an OOB http server instance on the doc feature class
+        OOBDocFeature.server = OOBHttpServer(host=public_ip)
+
     ctx.obj["target_param"] = target_parameter
     request_maker = RequestMaker(target, method, arguments, target_parameter, checker=checker)
     ctx.obj["detector"] = detector.Detector(checker, request_maker)
