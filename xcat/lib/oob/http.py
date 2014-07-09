@@ -11,9 +11,8 @@ class OOBHttpRequestHandler(server.ServerHttpProtocol):
     TEST_RESPONSE = random.randint(1, 150)
 
     def handle_request(self, message, payload):
-
         headers = email.message.Message()
-        for hdr, val in message.headers:
+        for hdr, val in message.headers.items():
             headers.add_header(hdr, val)
 
         response = aiohttp.Response(
