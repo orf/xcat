@@ -5,13 +5,17 @@ if "__file__" in locals():
 else:
     sys.path.append(os.path.join("saxon", "saxon9he.jar"))
 
+if not os.getcwd() in sys.path:
+    sys.path.append(os.getcwd()) # in PyCharm this fixes import errors
+
 from javax.xml.xpath import *
 from net.sf.saxon.s9api import *
 from org.xml.sax import InputSource
 from javax.xml.transform.sax import SAXSource
 from java.lang import System
+from net.sf.saxon.xpath import *
 
-from bottle import route, run, request
+from bottle import route, run, request, error, app
 
 xpf = XPathFactoryImpl()
 xpe = xpf.newXPath()
@@ -51,6 +55,12 @@ def fav():
 
 @route('/')
 def index():
+    try:
+        return _index()
+    except Exception, e:
+        return "Error"
+
+def _index():
     query = request.query.get("title", "")
     search_type = request.query.get("type", "*")
     rent_days = request.query.get("rent_days", "*")
@@ -127,5 +137,4 @@ if "--shell" in sys.argv:
     print search_library("Code")
     sys.exit()
 
-
-run(port=8080, debug=True)
+run(port=8080, debug=False)

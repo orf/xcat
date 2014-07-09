@@ -1,6 +1,7 @@
 <library>
     <rentals>
         <books>
+            <!-- A comment -->
             <book>
                 <title>The Davinci Code</title>
                 <author>Dan Brown</author>
