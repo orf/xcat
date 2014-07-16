@@ -25,17 +25,16 @@ class OOBDocFeature(BaseFeature):
 
     @asyncio.coroutine
     def is_available(self, requester):
-        for port in (81, 443):
-            try:
-                yield from self.server.start(port=port)
-            except Exception:
-                continue
-            r = yield from super().is_available(requester)
-            self.server.stop()
-            if r:
-                self.working_port = port
-                return True
-        return False
+        try:
+            yield from self.server.start()
+        except Exception:
+            return False
+        r = yield from super().is_available(requester)
+        if r:
+            self.working_port = self.server.port
+
+        self.server.stop()
+        return True if self.working_port else False
 
     @asyncio.coroutine
     def execute(self, requester, expression):

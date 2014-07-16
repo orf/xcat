@@ -49,6 +49,13 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
     else:
         checker = lambda r, b: not match_string in b
 
+    public_ip, public_port = public_ip.split(":") if ":" in public_ip else public_ip, "0"
+    if not public_port.isdigit():
+        print("Error: Port is not a number")
+        ctx.exit(-1)
+
+    public_port = int(public_port)
+
     if public_ip == "autodetect":
         try:
             public_ip = ipgetter.IPgetter().get_externalip()
@@ -60,7 +67,7 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
     if public_ip is not None:
         # Hack Hack Hack:
         # Setup an OOB http server instance on the doc feature class
-        OOBDocFeature.server = OOBHttpServer(host=public_ip)
+        OOBDocFeature.server = OOBHttpServer(host=public_ip, port=public_port)
 
     ctx.obj["target_param"] = target_parameter
     request_maker = RequestMaker(target, method, arguments, target_parameter, checker=checker)

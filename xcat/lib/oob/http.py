@@ -126,6 +126,10 @@ class OOBHttpServer(object):
                 self.create_handler,
                 "0.0.0.0", self.port
             )
+
+            if self.port == 0:
+                self.port = self.server.sockets[0].getsockname()[1]
+
             return
 
     def stop(self):
