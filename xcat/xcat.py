@@ -33,7 +33,7 @@ colorama.init()
 #@click.option("--error", "detection_method", flag_value="error", help="match_string indicates an error response")
 
 @click.option("--loglevel", type=click.Choice(["debug", "info", "warn", "error"]), default="error")
-@click.option("--logfile", type=click.File("w", encoding="utf-8"), default="-")
+@click.option("--logfile", type=click.File("wb", encoding="utf-8"), default="-")
 
 @click.option("--public-ip", help="Public IP address to use with OOB connections (use 'autodetect' to auto-detect value)")
 @click.pass_context

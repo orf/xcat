@@ -38,7 +38,7 @@ Examples
 If you run a windows machine you can install Jython and start the example application (example_application/ironpython_site.py).
 The syntax for a simple command you can execute against this server is:
 
-    xcat ---method=GET http://localhost:8080 title=Foundation title "1 results found" run retrieve
+    xcat --method=GET http://localhost:8080 title=Foundation title "1 results found" run retrieve
 
 This command specifies the HTTP method (GET), target URL (our localhost server), the GET or POST) data to send (title=Bible),
 the vulnerable parameter (title) and a string to indicate a true response (Book found). Executing this will retrieve
