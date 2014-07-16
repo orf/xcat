@@ -275,4 +275,8 @@ def run():
     xcat(obj={})
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except KeyboardInterrupt:
+        import sys
+        sys.exit(-1)
