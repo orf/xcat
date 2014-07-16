@@ -277,6 +277,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except KeyboardInterrupt:
+    except Exception as e:
+        print("Error: {}".format(e))
         import sys
         sys.exit(-1)
