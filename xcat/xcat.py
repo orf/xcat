@@ -49,7 +49,7 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
     else:
         checker = lambda r, b: not match_string in b
 
-    public_ip, public_port = public_ip.split(":") if ":" in public_ip else public_ip, "0"
+    public_ip, public_port = public_ip.split(":") if public_ip and ":" in public_ip else public_ip, "0"
     if not public_port.isdigit():
         print("Error: Port is not a number")
         ctx.exit(-1)
