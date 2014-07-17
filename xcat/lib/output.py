@@ -6,7 +6,6 @@ import abc
 
 import xmltodict
 import click
-import sys
 
 
 class Output(abc.ABC):
