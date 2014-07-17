@@ -49,7 +49,7 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
     else:
         checker = lambda r, b: not match_string in b
 
-    public_ip, public_port = public_ip.split(":") if public_ip and ":" in public_ip else public_ip, "0"
+    public_ip, public_port = public_ip.split(":") if public_ip and ":" in public_ip else (public_ip, "0")
     if not public_port.isdigit():
         print("Error: Port is not a number")
         ctx.exit(-1)
@@ -158,13 +158,15 @@ def file_shell(ctx):
     click.echo(" 3. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.")
     click.echo("Type doc, inject or comment to switch modes. Defaults to inject")
     click.echo("Type uri to read the URI of the document being queried")
-    click.echo("Note: The URI should have a protocol, e.g: file:///test.xml. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
+    click.echo("Note: The URI should have a protocol prefix. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
+    click.echo("On Windows you may need to use 'file:' as a prefix, not 'file://'.")
 
     try:
         entity_injection = ctx.obj["requester"].get_feature(EntityInjection)
     except Exception:
         entity_injection = None
 
+    # ToDo: Make doc injection verify that the files exist
     commands = {
         "doc": lambda p: run_then_return(display_results(XMLOutput(), ctx.obj["executor"], doc(p).add_path("/*[1]"))),
         "inject": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path))),
@@ -179,6 +181,9 @@ def file_shell(ctx):
 
     while True:
         file_path = click.prompt(">> ", prompt_suffix="")
+        if file_path == "exit":
+            ctx.exit()
+
         if file_path == "uri":
             executor = ctx.obj["executor"]
             uri = run_then_return(
@@ -194,7 +199,7 @@ def file_shell(ctx):
             try:
                 commands[mode](file_path)
             except Exception as e:
-                click.echo("Error reading file. Try another mode")
+                click.echo("Error reading file. Try another mode: {0}".format(e))
 
 
 

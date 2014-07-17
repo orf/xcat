@@ -69,6 +69,8 @@ class OOBHttpRequestHandler(server.ServerHttpProtocol):
             self.server.got_data(identifier, parsed_data)
 
             response.write(bytes("<test>{}</test>".format(identifier), "utf-8"))
+        #else:
+        #    response.write(bytes("Begone!"))
 
         yield from response.write_eof()
         if response.keep_alive():
@@ -98,6 +100,12 @@ class OOBHttpServer(object):
         return self.serve_files[id]
 
     def expect_entity_injection(self, entity_value, use_comment=False):
+        """
+        Expect a HTTP request and serve crafted XML entity
+        :param entity_value: the value of the entity. Normally a file path
+        :param use_comment: If True the entity will be inside a comment
+        :return: a tuple of an ID and a future
+        """
         tick, future = self.expect_data()
         self.serve_files[tick] = (use_comment, entity_value)
         return tick, future
@@ -115,6 +123,7 @@ class OOBHttpServer(object):
     @asyncio.coroutine
     def start(self, port=None):
         with (yield from self._lock):
+            print("Listening on {}".format(self.port))
             if self.server is not None:
                 return #raise RuntimeError("Server has already been started")
 
@@ -135,6 +144,7 @@ class OOBHttpServer(object):
     def stop(self):
         if self.server is None:
             return #raise RuntimeError("Server has not been started!")
+        print("Stopping server")
         self.server.close()
         self.server = None
 

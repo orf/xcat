@@ -95,8 +95,9 @@ def getChildren(node):
 
     while True:
         child = axis_iterator.current()
-        if child.displayName != "":
-            returner.append(child)
+        if child is not None:
+            if child.displayName != "":
+                returner.append(child)
 
         if not axis_iterator.moveNext():
             break
@@ -106,8 +107,11 @@ def getChildren(node):
 
 def node_to_object(node):
     returner = {}
-
+    print node.getStringValue()
     for child in getChildren(node):
+        if child is None:
+            continue
+
         if child.displayName:
             returner[child.displayName] = child.getStringValue()
 
@@ -134,7 +138,20 @@ def execute(query):
 
 
 if "--shell" in sys.argv:
-    print search_library("Code")
+    while True:
+        r = raw_input(">> ")
+        try:
+            expression = xpe.compile(r)
+            results = expression.evaluate(doc, XPathConstants.NODESET)
+            print results
+            if results:
+                print node_to_object(results[0])
+        except BaseException, e:
+            print "Ex: %s" % e
+        except:
+            print "Exception!"
+            import traceback
+            traceback.print_exc()
     sys.exit()
 
-run(port=8080, debug=False)
+run(host="0.0.0.0", port=8080, debug=False)

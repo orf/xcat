@@ -13,6 +13,17 @@ class EntityInjection(OOBDocFeature):
         ]
 
     def get_file(self, requester, file_path, use_comment=False):
+        """
+        Return a string of the file path given in :param:`use_comment`
+
+        :param requester: The requestmaker to use
+        :type requester: xcat.lib.requests.requester.RequestMaker
+        :param file_path: The path of the file to retrieve
+        :type file_path: str
+        :param use_comment: Serve this file through a comment.
+        :type use_comment: bool
+        :return: str or None -- The file content
+        """
         identifier, future = self.server.expect_entity_injection(file_path, use_comment=use_comment)
         entity_inject = doc("{}/entity/{}".format(self.server.location, identifier))
 
@@ -27,6 +38,9 @@ class EntityInjection(OOBDocFeature):
             #logger.error("5 second timeout expired waiting for doc() postback.")
             return None
         if not "d" in result:
+            return None
+
+        if not result["d"]:
             return None
 
         return result["d"][0]

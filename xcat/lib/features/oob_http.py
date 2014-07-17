@@ -32,9 +32,10 @@ class OOBDocFeature(BaseFeature):
         r = yield from super().is_available(requester)
         if r:
             self.working_port = self.server.port
+            return True
 
         self.server.stop()
-        return True if self.working_port else False
+        return False
 
     @asyncio.coroutine
     def execute(self, requester, expression):
