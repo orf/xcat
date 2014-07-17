@@ -159,7 +159,7 @@ def file_shell(ctx):
     click.echo("Type doc, inject or comment to switch modes. Defaults to inject")
     click.echo("Type uri to read the URI of the document being queried")
     click.echo("Note: The URI should have a protocol prefix. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
-    click.echo("On Windows you may need to use 'file:' as a prefix, not 'file://'.")
+    click.echo("When using the example application use 'file:' as a prefix, not 'file://'.")
 
     try:
         entity_injection = ctx.obj["requester"].get_feature(EntityInjection)
@@ -198,7 +198,10 @@ def file_shell(ctx):
         else:
             try:
                 commands[mode](file_path)
+            except KeyboardInterrupt:
+                click.echo("Command cancelled, CTRL+C again to terminate")
             except Exception as e:
+                import traceback
                 click.echo("Error reading file. Try another mode: {0}".format(e))
 
 
