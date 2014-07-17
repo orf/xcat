@@ -11,7 +11,7 @@ import sys
 
 class Output(abc.ABC):
     def __init__(self, fd=None):
-        self.output = fd or click.get_text_stream("stdout", encoding="utf-8")
+        self.output = fd or click.get_text_stream("stdout")
 
     @abc.abstractmethod
     def output_start_node(self, node):
