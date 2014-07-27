@@ -107,7 +107,6 @@ def getChildren(node):
 
 def node_to_object(node):
     returner = {}
-    print node.getStringValue()
     for child in getChildren(node):
         if child is None:
             continue
@@ -133,7 +132,6 @@ def execute(query):
         }
         returned_result.update(node_to_object(result))
         returner.append(returned_result)
-    print "%s results" % len(returner)
     return returner
 
 

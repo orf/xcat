@@ -70,7 +70,7 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
         OOBDocFeature.server = OOBHttpServer(host=public_ip, port=public_port)
 
     ctx.obj["target_param"] = target_parameter
-    request_maker = RequestMaker(target, method, arguments, target_parameter, checker=checker)
+    request_maker = RequestMaker(target, method, arguments, target_parameter if target_parameter != "*" else None, checker=checker)
     ctx.obj["detector"] = detector.Detector(checker, request_maker)
 
 
