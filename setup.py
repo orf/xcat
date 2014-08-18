@@ -8,8 +8,9 @@ if os.path.exists("README.rst"):
 
 
 setup(name="xcat",
-      version="0.7",
+      version="0.7.1",
       author="Tom Forbes",
+      license="MIT",
       author_email="tom@tomforb.es",
       package_dir = {'xcat': 'xcat'},
       packages = ["xcat"] + ["xcat." + p for p in find_packages("xcat")],
@@ -26,5 +27,6 @@ setup(name="xcat",
           'Programming Language :: Python :: 3',
           'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.3',
-          'Programming Language :: Python :: 3.2'
+          'Programming Language :: Python :: 3.2',
+          'License :: OSI Approved :: MIT License',
       ])
