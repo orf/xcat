@@ -179,9 +179,11 @@ def console(ctx):
         child_node_count_result = yield from executor.count_nodes(node.children)
         click.echo("%i child node found." % child_node_count_result)
 
-        for child in node.children(child_node_count_result):
-            child_name = yield from executor.get_string(child.name)
-            click.echo(child_name)
+        futures = map(asyncio.Task, (executor.get_string(child.name) for child in node.children(child_node_count_result) ))
+        results = (yield from asyncio.gather(*futures))
+        
+        for result in results:
+            click.echo(result)
 
     @asyncio.coroutine
     def command_cd(node, params):
