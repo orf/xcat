@@ -113,12 +113,7 @@ class XPath1Executor(BaseExecutor):
         @asyncio.coroutine
         def simple_attributes(self, node):
             attribute_count = yield from self.count_nodes(node.attributes)
-            attributes_result = {}
-
-            for i in range(attribute_count):
-                attributes_result["att%i" % i] = "att%i_placeholder" % i
-            
-            return attributes_result
+            return { "att%i" % i : "att%i_placeholder" % i for i in range(attribute_count) }
 
         @asyncio.coroutine
         def simple_text(self, node):

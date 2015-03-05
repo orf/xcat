@@ -27,7 +27,7 @@ class DocFunctionExecutor(XPath2Executor):
         return (yield from self.feature.execute_many(self.requester, nodes))
 
     @asyncio.coroutine
-    def retrieve_node(self, node):
+    def retrieve_node(self, node, simple=False):
         # get the node name, attribute count, child node count, text count and comments count
         # in one fell swoop.
         result = yield from self.feature.execute_many(self.requester, (
@@ -43,29 +43,35 @@ class DocFunctionExecutor(XPath2Executor):
 
         node_name = result[0]
         attribute_count, child_count, text_count, comment_count = map(int, result[1:])
-        attribute_queries = itertools.chain(
-            *((attr.name, attr) for attr in node.attributes(int(attribute_count)))
-        )
-        attributes = yield from self.feature.execute_many(self.requester, attribute_queries)
 
-        if attributes is None:
-            attributes = yield from super().get_attributes(node, attribute_count)
+        if simple:
+            attributes = { "att%i" % i : "att%i_placeholder" % i for i in range(attribute_count) }
+            node_text = "%i text node" % text_count if text_count > 0 else ""
+            comments = ["%i comment node" % comment_count] if comment_count > 0 else []
         else:
-            # Combine the lists into key-value pairs
-            attributes = dict(itertools.zip_longest(
-                attributes[0:None:2], attributes[1:None:2]
-            ))
+            attribute_queries = itertools.chain(
+                *((attr.name, attr) for attr in node.attributes(int(attribute_count)))
+            )
+            attributes = yield from self.feature.execute_many(self.requester, attribute_queries)
 
-        node_text = yield from self.feature.execute_many(self.requester, node.text(text_count))
-        if node_text is None:
-            node_text = yield from super().get_node_text(node, text_count)
-        else:
-            node_text = "".join(node_text).strip()
+            if attributes is None:
+                attributes = yield from super().get_attributes(node, attribute_count)
+            else:
+                # Combine the lists into key-value pairs
+                attributes = dict(itertools.zip_longest(
+                    attributes[0:None:2], attributes[1:None:2]
+                ))
 
-        comments = yield from self.feature.execute_many(self.requester, node.comments(comment_count))
+            node_text = yield from self.feature.execute_many(self.requester, node.text(text_count))
+            if node_text is None:
+                node_text = yield from super().get_node_text(node, text_count)
+            else:
+                node_text = "".join(node_text).strip()
 
-        if comments is None:
-            comments = yield from super().get_comments(node, comment_count)
+            comments = yield from self.feature.execute_many(self.requester, node.comments(comment_count))
+
+            if comments is None:
+                comments = yield from super().get_comments(node, comment_count)
 
         return XMLNode(
             name=node_name,
