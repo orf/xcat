@@ -5,12 +5,12 @@ import copy
 
 import aiohttp
 import logbook
+import asyncio
 
 from ..xpath import Expression
 
-
 class RequestMaker(object):
-    def __init__(self, url, method, working_data, target_parameter, checker, features=None, injector=None):
+    def __init__(self, url, method, working_data, target_parameter, checker, limit_request=20, features=None, injector=None):
         self.url = url
         self.method = method
         if isinstance(working_data, str):
@@ -25,6 +25,8 @@ class RequestMaker(object):
         self.requests_sent = 0
         self.checker = checker
         self.injector = injector
+        self.limit_request = limit_request
+        self.semaphore = asyncio.Semaphore(limit_request)
 
         self.logger = logbook.Logger("RequestMaker")
 
@@ -49,7 +51,7 @@ class RequestMaker(object):
 
     def with_injector(self, injector):
         return RequestMaker(self.url, self.method, self.working_data,
-                            self.target_parameter, self.checker, self.features, injector)
+                            self.target_parameter, self.checker, self.limit_request, self.features, injector)
 
     def get_query_data(self, new_target_data):
         new_dict = copy.deepcopy(self.working_data)
@@ -57,23 +59,25 @@ class RequestMaker(object):
         return parse.urlencode(new_dict, doseq=True)
 
     def send_raw_request(self, data):
-        self.logger.debug("Sending request with data {}", data)
+        # Limit the number of concurrent request
+        with (yield from self.semaphore):
+            self.logger.debug("Sending request with data {}", data)
+    
+            if isinstance(data, dict):
+                data = parse.urlencode(data, doseq=True)
+            elif isinstance(data, Expression):
+                # Make data
+                data = str(data)
 
-        if isinstance(data, dict):
-            data = parse.urlencode(data, doseq=True)
-        elif isinstance(data, Expression):
-            # Make data
-            data = str(data)
+            if self.method == "GET":
+                url = self.url + "?" + data
+                data = None
+            else:
+               url = self.url
 
-        if self.method == "GET":
-            url = self.url + "?" + data
-            data = None
-        else:
-            url = self.url
-
-        response = yield from aiohttp.request(self.method, url,  data=data)
-        body = (yield from response.read_and_close()).decode("utf-8")
-        return response, body
+            response = yield from aiohttp.request(self.method, url,  data=data)
+            body = (yield from response.read_and_close()).decode("utf-8")
+            return response, body
 
     def send_request(self, payload):
         response, body = yield from self.send_raw_request(payload)

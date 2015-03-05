@@ -35,9 +35,11 @@ colorama.init()
 @click.option("--loglevel", type=click.Choice(["debug", "info", "warn", "error"]), default="error")
 @click.option("--logfile", type=click.File("wb", encoding="utf-8"), default="-")
 
+@click.option("--limit", type=click.INT, help="Maximum number of concurrent request sent to the server", default=20)
+
 @click.option("--public-ip", help="Public IP address to use with OOB connections (use 'autodetect' to auto-detect value)")
 @click.pass_context
-def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, public_ip):
+def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, limit, public_ip):
     null_handler = logbook.NullHandler()
     null_handler.push_application()
 
@@ -70,7 +72,7 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
         OOBDocFeature.server = OOBHttpServer(host=public_ip, port=public_port)
 
     ctx.obj["target_param"] = target_parameter
-    request_maker = RequestMaker(target, method, arguments, target_parameter if target_parameter != "*" else None, checker=checker)
+    request_maker = RequestMaker(target, method, arguments, target_parameter if target_parameter != "*" else None, checker=checker, limit_request = limit)
     ctx.obj["detector"] = detector.Detector(checker, request_maker)
 
 
@@ -278,7 +280,6 @@ def display_results(output, executor, target_node, first=True):
         output.output_finished()
 
     return data
-
 
 def run_then_return(generator):
     future = asyncio.Task(generator)
