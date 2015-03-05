@@ -154,6 +154,100 @@ def simple(ctx, query, output, format):
 
     run_then_return(display_results(out, executor, E(query), simple=True))
 
+@run.command(help="Let's you manually explore the XML file with a console.")
+@click.pass_context
+def console(ctx):
+    click.echo("Opening console")
+
+    current_node = "/*[1]"
+    executor = ctx.obj["executor"]
+
+    @asyncio.coroutine
+    def command_attr(node, params):
+        attribute_count   = yield from executor.count_nodes(node.attributes)
+        attributes_result = yield from executor.get_attributes(node, attribute_count)
+
+        if attribute_count == 0:
+            click.echo("No attributes found.")
+        else:
+            for name in attributes_result:
+                if not name == "":
+                    click.echo("%s = %s" % (name, attributes_result[name]))
+
+    @asyncio.coroutine
+    def command_ls(node, params):
+        child_node_count_result = yield from executor.count_nodes(node.children)
+        click.echo("%i child node found." % child_node_count_result)
+
+        for child in node.children(child_node_count_result):
+            child_name = yield from executor.get_string(child.name)
+            click.echo(child_name)
+
+    @asyncio.coroutine
+    def command_cd(node, params):
+        if len(params) < 1:
+            click.echo("You must specify a node to navigate to.")
+            return
+
+        selected_node = params[0]
+
+        # We consider anything that starts with a slash is an absolute path
+        if selected_node[0] == "/":
+            new_node = selected_node
+        elif selected_node == "..":
+            new_node = "/".join(current_node.split("/")[:-1])
+        elif selected_node == ".":
+            new_node = current_node
+        else:
+            new_node = current_node + "/" + selected_node
+
+        if (yield from executor.is_empty_string(E(new_node).name)):
+            click.echo("Node does not exists.")
+        else:
+            return new_node
+
+    @asyncio.coroutine
+    def command_content(node, params):
+        text_count = yield from executor.count_nodes(node.text)
+        click.echo((yield from executor.get_node_text(node, text_count)))
+
+    @asyncio.coroutine
+    def command_comment(node, params):
+        comment_count = yield from executor.count_nodes(node.comments)
+        click.echo("%i comment node found." % comment_count)
+
+        for comment in (yield from executor.get_comments(node, comment_count)):
+            click.echo("<!-- %s -->" % comment)
+
+    @asyncio.coroutine
+    def command_name(node, params):
+        node_name = yield from executor.get_string(E(current_node).name)
+        click.echo(node_name)
+
+    commands = {
+        "ls"      : command_ls,
+        "attr"    : command_attr,
+        "cd"      : command_cd,
+        "content" : command_content,
+        "comment" : command_comment,
+        "name"    : command_name
+    }
+
+    while True:
+        command = click.prompt("%s : " % current_node, prompt_suffix="")
+        command_part = command.split(" ")
+        command_name = command_part[0]
+        parameters = command_part[1:]
+
+        if command_name in commands:
+            command_execution = commands[command_name](E(current_node), parameters)
+            new_node = run_then_return(command_execution)
+
+            if not new_node == None:
+                current_node = new_node
+        else:
+            click.echo("Unknown command")
+
 
 @run.command(help="Read arbitrary files from the filesystem")
 @click.pass_context
