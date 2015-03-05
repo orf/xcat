@@ -109,15 +109,67 @@ class XPath1Executor(BaseExecutor):
         def node_name(self, node):
             node_name_result = yield from self.get_string(node.name)
             return node_name_result
-        
 
-	    tasks = {
-	        "attributes"       : attributes,
-	        "child_node_count" : child_node_count,
-	        "text"             : text,
-	        "comments"         : comments,
-	        "node_name"        : node_name
-	    }
+        @asyncio.coroutine
+        def simple_attributes(self, node):
+            attribute_count = yield from self.count_nodes(node.attributes)
+            attributes_result = {}
+
+            for i in range(attribute_count):
+                attributes_result["att%i" % i] = "att%i_placeholder" % i
+            
+            return attributes_result
+
+        @asyncio.coroutine
+        def simple_text(self, node):
+            text_count = yield from self.count_nodes(node.text)
+            count_not_empty = 0
+            
+            for text in node.text(text_count):
+                if not (yield from self.is_empty_string(text)):
+                    count_not_empty += 1
+            
+            
+            if count_not_empty > 0:
+                return "%i text node found." % count_not_empty
+            else:
+                return ""
+
+        @asyncio.coroutine
+        def simple_comments(self, node):
+            comment_count = yield from self.count_nodes(node.comments)
+            comments = ["%i comments found." % comment_count] if comment_count > 0 else []
+            return comments
+        
+        @asyncio.coroutine
+        def simple_node_name(self, node):
+            node_name_length = yield from self.string_length(node.name)
+            
+            if node_name_length <= 6:
+                node_name_result = yield from self.get_string(node.name)
+                return node_name_result
+            
+            left_part = yield from self.get_string(substring(node.name, 0, 3))
+            right_part = yield from self.get_string(substring(node.name, node_name_length - 3, node_name_length))
+            remaining = node_name_length - 6
+            return "%s ... %i more chracters  ... %s" % (left_part, remaining, right_part)
+        
+        if simple:
+    	    tasks = {
+    	        "attributes"       : simple_attributes,
+    	        "child_node_count" : child_node_count,
+    	        "text"             : simple_text,
+    	        "comments"         : simple_comments,
+    	        "node_name"        : simple_node_name
+    	    }
+        else:
+    	    tasks = {
+    	        "attributes"       : attributes,
+    	        "child_node_count" : child_node_count,
+    	        "text"             : text,
+    	        "comments"         : comments,
+    	        "node_name"        : node_name
+    	    }
         
         task_list = list(tasks.keys())
 		

@@ -140,6 +140,20 @@ def retrieve(ctx, query, output, format):
     output_class = XMLOutput if format == "xml" else JSONOutput
     run_then_return(display_results(output_class(output), executor, E(query)))
 
+@run.command(help="Attempt to retrieve an overview of the XML document. This will only return partial information about the structure of the document.")
+@click.option("--query", default="/*[1]", help="Query to retrieve. Defaults to root node (/*[1])")
+@click.option("--output", type=click.File('wb'), default="-", help="Location to output XML to")
+@click.option("--format", type=click.Choice(["xml", "json"]), default="xml", help="Format for output")
+@click.pass_context
+def simple(ctx, query, output, format):
+    click.echo("Retrieving overview")
+    executor = ctx.obj["executor"]
+
+    output_class = XMLOutput if format == "xml" else JSONOutput
+    out = output_class(output)
+
+    run_then_return(display_results(out, executor, E(query), simple=True))
+
 
 @run.command(help="Read arbitrary files from the filesystem")
 @click.pass_context
@@ -261,17 +275,17 @@ def get_injectors(detector, with_features=False):
 
 
 @asyncio.coroutine
-def display_results(output, executor, target_node, first=True):
+def display_results(output, executor, target_node, simple=False, first=True):
     if first:
         output.output_started()
 
     children = []
-    node = yield from executor.retrieve_node(target_node)
+    node = yield from executor.retrieve_node(target_node, simple)
     output.output_start_node(node)
 
     if node.child_count > 0:
         for child in target_node.children(node.child_count):
-            children.append((yield from display_results(output, executor, child, first=False)))
+            children.append((yield from display_results(output, executor, child, simple, first=False)))
 
     output.output_end_node(node)
     data = node._replace(children=children)
