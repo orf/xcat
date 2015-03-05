@@ -178,12 +178,12 @@ The `console` command will open an interactive shell :
 
 The supported command of the shell are `ls`, `cd`, `attr`, `comment`, `content`, `name`.
 
-    ls - List the name of all the subnode.
-    cd - Change the current node. Use the value `..` to navigate back. to specify an absolute path start with a `/`.
-    attr - List the attributes of the current node.
-    comment - List of the comments node of the current node.
-    content - Return the content of the current node.
-    name - Return the node name of the current node. 
+ - `ls` - List the name of all the subnode.
+ - `cd` - Change the current node. Use the value `..` to navigate back. to specify an absolute path start with a `/`.
+ - `attr` - List the attributes of the current node.
+ - `comment` - List of the comments node of the current node.
+ - `content` - Return the content of the current node.
+ - `name` - Return the node name of the current node. 
 
 ### Simple usage with the example application
 Check out the [readme](src/example_application) to try out XCat with the provided example application.
