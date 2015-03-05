@@ -168,7 +168,16 @@ def arg_to_representation(other):
 
 @arg_to_representation.register(str)
 def _(other):
-    return "'%s'" % other
+    if not "'" in str(other):
+       return "'%s'" % other
+
+    if not '"' in str(other):
+       return '"%s"' % other
+
+    safe_concat = ",".join(arg_to_representation(c) for c in str(other))
+    safe_concat = safe_concat.replace('","', '')
+    safe_concat = safe_concat.replace("','", '')
+    return "concat(" + safe_concat + ")"
 
 @arg_to_representation.register(Expression)
 def _(other):
