@@ -148,6 +148,8 @@ works if the vulnerable parameter supports the doc feature (and optionally entit
 There are also two other commands `simple` and `console` that will help you navigate larger XML file without having to get everything. They are very 
 useful to have a quick overview of the XML document.
 
+The `simple` command :
+
     >> xcat --method=GET --public-ip="localhost" http://localhost:8080 title=Foundation title "1 results found" run simple
     Injecting using FunctionCall
     Detecting features...
@@ -164,7 +166,7 @@ useful to have a quick overview of the XML document.
 			    <!--1 comment node-->
     
 
-For the `console` commands, it will open you a shell where you can type your command and navigate the document.
+The `console` command will open an interactive shell :
 
     Injecting using FunctionCall
     Detecting features...
