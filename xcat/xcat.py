@@ -1,6 +1,30 @@
+"""
+XCat.
+
+Usage:
+    xcat <url>
+    xcat get-uri <url>
+    xcat test-injection <url>
+    xcat file-shell <url>
+    xcat console <url>
+    xcat structure <url>
+    xcat retrieve <urL> --query='/*[1]'
+
+Options:
+    --target, -t        Target parameter to test against
+    --match, -m         String to match against
+    --method=<method>   HTTP Method to use for requests [default: GET].
+    --true              Indicates match_string is a True response.
+    --false             Indicates match_string is a False response.
+    --debug             Debug requests and responses.
+    --public-ip=<ip>    Public IP to use with OOB connects [default: autodetect].
+    --limit=<limit>     Max number of concurrent connections to the target [default: 20].
+    --xversion=<ver>    XCat version to use [default: autodetect].
+"""
+
+import docopt
 import asyncio
 
-import click
 import colorama
 import logbook
 import ipgetter
@@ -17,29 +41,11 @@ from .lib.requests import detector
 from .lib.requests.requester import RequestMaker
 from .lib.oob.http import OOBHttpServer
 
-
 colorama.init()
 
 
-@click.group()
-@click.argument("target")
-@click.argument("arguments")
-@click.argument("target_parameter")
-@click.argument("match_string")
-@click.option("--method", help="HTTP method to use", default="POST")
-
-@click.option("--true", "detection_method", flag_value="true", default=True, help="match_string indicates a true response")
-@click.option("--false", "detection_method", flag_value="false", help="match_string indicates a false response")
-#@click.option("--error", "detection_method", flag_value="error", help="match_string indicates an error response")
-
-@click.option("--loglevel", type=click.Choice(["debug", "info", "warn", "error"]), default="error")
-@click.option("--logfile", type=click.File("wb", encoding="utf-8"), default="-")
-
-@click.option("--limit", type=click.INT, help="Maximum number of concurrent request sent to the server", default=20)
-
-@click.option("--public-ip", help="Public IP address to use with OOB connections (use 'autodetect' to auto-detect value)")
-@click.pass_context
-def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, limit, public_ip):
+def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, limit,
+         public_ip):
     null_handler = logbook.NullHandler()
     null_handler.push_application()
 
@@ -72,17 +78,11 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
         OOBDocFeature.server = OOBHttpServer(host=public_ip, port=public_port)
 
     ctx.obj["target_param"] = target_parameter
-    request_maker = RequestMaker(target, method, arguments, target_parameter if target_parameter != "*" else None, checker=checker, limit_request = limit)
+    request_maker = RequestMaker(target, method, arguments, target_parameter if target_parameter != "*" else None,
+                                 checker=checker, limit_request=limit)
     ctx.obj["detector"] = detector.Detector(checker, request_maker)
 
 
-
-@xcat.group()
-@click.option("--injector", type=click.Choice(["autodetect"] + list(get_all_injectors().keys())),
-              default="autodetect", help="Type of injection to use.")
-@click.option("--xversion", type=click.Choice(["autodetect", "1","2"]),
-              default="autodetect", help="XPath version to use")
-@click.pass_context
 def run(ctx, injector, xversion):
     if ctx.obj["target_param"] == "*":
         click.echo("Please specify a valid target parameter!")
@@ -128,11 +128,6 @@ def run(ctx, injector, xversion):
     ctx.obj["executor"] = executor(ctx.obj["requester"])
 
 
-@run.command(help="Attempt to retrieve the whole XML document")
-@click.option("--query", default="/*[1]", help="Query to retrieve. Defaults to root node (/*[1])")
-@click.option("--output", type=click.File('wb'), default="-", help="Location to output XML to")
-@click.option("--format", type=click.Choice(["xml", "json"]), default="xml", help="Format for output")
-@click.pass_context
 def retrieve(ctx, query, output, format):
     click.echo("Retrieving {}".format(query))
     executor = ctx.obj["executor"]
@@ -140,12 +135,8 @@ def retrieve(ctx, query, output, format):
     output_class = XMLOutput if format == "xml" else JSONOutput
     run_then_return(display_results(output_class(output), executor, E(query)))
 
-@run.command(help="Attempt to retrieve an overview of the XML document. This will only return partial information about the structure of the document.")
-@click.option("--query", default="/*[1]", help="Query to retrieve. Defaults to root node (/*[1])")
-@click.option("--output", type=click.File('wb'), default="-", help="Location to output XML to")
-@click.option("--format", type=click.Choice(["xml", "json"]), default="xml", help="Format for output")
-@click.pass_context
-def simple(ctx, query, output, format):
+
+def structure(ctx, query, output, format):
     click.echo("Retrieving overview")
     executor = ctx.obj["executor"]
 
@@ -154,8 +145,7 @@ def simple(ctx, query, output, format):
 
     run_then_return(display_results(out, executor, E(query), simple=True))
 
-@run.command(help="Let's you manually explore the XML file with a console.")
-@click.pass_context
+
 def console(ctx):
     click.echo("Opening console")
 
@@ -164,7 +154,7 @@ def console(ctx):
 
     @asyncio.coroutine
     def command_attr(node, params):
-        attribute_count   = yield from executor.count_nodes(node.attributes)
+        attribute_count = yield from executor.count_nodes(node.attributes)
         attributes_result = yield from executor.get_attributes(node, attribute_count)
 
         if attribute_count == 0:
@@ -179,9 +169,10 @@ def console(ctx):
         child_node_count_result = yield from executor.count_nodes(node.children)
         click.echo("%i child node found." % child_node_count_result)
 
-        futures = map(asyncio.Task, (executor.get_string(child.name) for child in node.children(child_node_count_result) ))
+        futures = map(asyncio.Task,
+                      (executor.get_string(child.name) for child in node.children(child_node_count_result)))
         results = (yield from asyncio.gather(*futures))
-        
+
         for result in results:
             click.echo(result)
 
@@ -227,12 +218,12 @@ def console(ctx):
         click.echo(node_name)
 
     commands = {
-        "ls"      : command_ls,
-        "attr"    : command_attr,
-        "cd"      : command_cd,
-        "content" : command_content,
-        "comment" : command_comment,
-        "name"    : command_name
+        "ls": command_ls,
+        "attr": command_attr,
+        "cd": command_cd,
+        "content": command_content,
+        "comment": command_comment,
+        "name": command_name
     }
 
     while True:
@@ -251,8 +242,6 @@ def console(ctx):
             click.echo("Unknown command")
 
 
-@run.command(help="Read arbitrary files from the filesystem")
-@click.pass_context
 def file_shell(ctx):
     requester = ctx.obj["requester"]
     click.echo("These are the types of files you can read:")
@@ -267,10 +256,12 @@ def file_shell(ctx):
     click.echo("There are three ways to read files on the file system using XPath:")
     click.echo(" 1. inject: Can read arbitrary text files as long as they do not contain any XML")
     click.echo(" 2. comment: Can read arbitrary text files containing XML snippets, but cannot contain '-->'")
-    click.echo(" 3. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.")
+    click.echo(
+        " 3. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.")
     click.echo("Type doc, inject or comment to switch modes. Defaults to inject")
     click.echo("Type uri to read the URI of the document being queried")
-    click.echo("Note: The URI should have a protocol prefix. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
+    click.echo(
+        "Note: The URI should have a protocol prefix. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
     click.echo("When using the example application use 'file:' as a prefix, not 'file://'.")
 
     try:
@@ -282,7 +273,8 @@ def file_shell(ctx):
     commands = {
         "doc": lambda p: run_then_return(display_results(XMLOutput(), ctx.obj["executor"], doc(p).add_path("/*[1]"))),
         "inject": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path))),
-        "comment": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path, True))),
+        "comment": lambda p: click.echo(
+            run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path, True))),
     }
     numbers = {
         "1": "inject",
@@ -317,9 +309,6 @@ def file_shell(ctx):
                 click.echo("Error reading file. Try another mode: {0}".format(e))
 
 
-
-@run.command(help="Get the URI of the document being queried")
-@click.pass_context
 def get_uri(ctx):
     click.echo("Retrieving URI...")
     executor = ctx.obj["executor"]
@@ -328,8 +317,7 @@ def get_uri(ctx):
     )
     click.echo("URI: {}".format(uri))
 
-@xcat.command(help="Test parameter for injectability")
-@click.pass_context
+
 def test_injection(ctx):
     detector = ctx.obj["detector"]
 
@@ -348,7 +336,7 @@ def test_injection(ctx):
             click.echo("Could not inject into parameter. Are you sure it is vulnerable?")
 
         for injector, features in injectors.items():
-            injector_example = "{}:\t\t{}".format(injector.__class__.__name__, injector.example)\
+            injector_example = "{}:\t\t{}".format(injector.__class__.__name__, injector.example) \
                 .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
             click.echo(injector_example)
 
@@ -362,7 +350,7 @@ def get_injectors(detector, with_features=False):
     if not with_features:
         return {i: [] for i in injectors}
     # Doesn't work it seems. Shame :(
-    #return{injector: (yield from detector.detect_features(injector))
+    # return{injector: (yield from detector.detect_features(injector))
     #        for injector in injectors}
     returner = {}
     for injector in injectors:
@@ -391,6 +379,7 @@ def display_results(output, executor, target_node, simple=False, first=True):
 
     return data
 
+
 def run_then_return(generator):
     future = asyncio.Task(generator)
     asyncio.get_event_loop().run_until_complete(future)
@@ -400,10 +389,12 @@ def run_then_return(generator):
 def run():
     xcat(obj={})
 
+
 if __name__ == "__main__":
     try:
         run()
     except Exception as e:
         print("Error: {}".format(e))
         import sys
+
         sys.exit(-1)

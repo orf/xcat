@@ -8,13 +8,13 @@ if os.path.exists("README.rst"):
 
 
 setup(name="xcat",
-      version="0.7.1",
+      version="0.8",
       author="Tom Forbes",
       license="MIT",
       author_email="tom@tomforb.es",
       package_dir = {'xcat': 'xcat'},
       packages = ["xcat"] + ["xcat." + p for p in find_packages("xcat")],
-      install_requires=["aiohttp", "click", "logbook", "xmltodict", 'colorama', 'ipgetter'],
+      install_requires=["aiohttp", "docopt", "logbook", "xmltodict", 'colorama', 'ipgetter'],
       entry_points={
           'console_scripts': [
               'xcat = xcat.xcat:run'
