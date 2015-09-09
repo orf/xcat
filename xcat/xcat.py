@@ -11,15 +11,17 @@ Usage:
     xcat retrieve <urL> --query='/*[1]'
 
 Options:
-    --target, -t        Target parameter to test against
-    --match, -m         String to match against
-    --method=<method>   HTTP Method to use for requests [default: GET].
-    --true              Indicates match_string is a True response.
-    --false             Indicates match_string is a False response.
-    --debug             Debug requests and responses.
-    --public-ip=<ip>    Public IP to use with OOB connects [default: autodetect].
-    --limit=<limit>     Max number of concurrent connections to the target [default: 20].
-    --xversion=<ver>    XCat version to use [default: autodetect].
+    -t, --target=<target>   The vulnerable parameter (in URL or body)
+    --match, -m             String to match against
+    --method=<method>       HTTP Method to use for requests [default: GET].
+    --true                  Indicates match_string is a True response.
+    --false                 Indicates match_string is a False response.
+    --debug                 Debug requests and responses.
+    --public-ip=<ip>        Public IP to use with OOB connects [default: autodetect].
+    --limit=<limit>         Max number of concurrent connections to the target [default: 20].
+    --xversion=<ver>        XCat version to use [default: autodetect].
+    --body=<body_data>      A string that will be sent with the request body.
+    --cookies=<cookies>     A string with all cookies to be sent, or a file containing all cookie data.
 """
 
 import docopt
