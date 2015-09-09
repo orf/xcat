@@ -1,5 +1,4 @@
-import xml
-from ..lib.requests.requester import RequestMaker
+from xcat.requests.requester import RequestMaker
 
 
 class FakeRequestMaker(RequestMaker):

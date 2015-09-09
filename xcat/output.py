@@ -5,7 +5,6 @@ import json
 import abc
 
 import xmltodict
-import click
 
 
 class Output(abc.ABC):

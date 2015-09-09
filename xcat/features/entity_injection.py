@@ -1,7 +1,8 @@
+import asyncio
+
 from .oob_http import OOBDocFeature
 from ..oob import http
 from ..xpath import doc, concat, encode_for_uri
-import asyncio
 
 
 class EntityInjection(OOBDocFeature):

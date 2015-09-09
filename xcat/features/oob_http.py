@@ -1,7 +1,6 @@
 import asyncio
 
 import logbook
-
 from . import BaseFeature
 from ..xpath import doc, concat, encode_for_uri
 from ..oob import http

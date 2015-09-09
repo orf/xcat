@@ -24,16 +24,14 @@ Options:
     --cookies=<cookies>     A string with all cookies to be sent, or a file containing all cookie data.
 """
 
-import docopt
 import asyncio
 
 import colorama
 import logbook
 import ipgetter
-
 from .lib.requests.injectors import get_all_injectors
 from .lib.executors import xpath1, xpath2, docfunction
-from .lib.features.oob_http import OOBDocFeature
+from xcat.features.oob_http import OOBDocFeature
 from .lib.features.doc import DocFeature
 from .lib.features.xpath_2 import XPath2
 from .lib.features.entity_injection import EntityInjection
@@ -386,17 +384,3 @@ def run_then_return(generator):
     future = asyncio.Task(generator)
     asyncio.get_event_loop().run_until_complete(future)
     return future.result()
-
-
-def run():
-    xcat(obj={})
-
-
-if __name__ == "__main__":
-    try:
-        run()
-    except Exception as e:
-        print("Error: {}".format(e))
-        import sys
-
-        sys.exit(-1)
