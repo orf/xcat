@@ -35,9 +35,11 @@ colorama.init()
 @click.option("--loglevel", type=click.Choice(["debug", "info", "warn", "error"]), default="error")
 @click.option("--logfile", type=click.File("wb", encoding="utf-8"), default="-")
 
+@click.option("--limit", type=click.INT, help="Maximum number of concurrent request sent to the server", default=20)
+
 @click.option("--public-ip", help="Public IP address to use with OOB connections (use 'autodetect' to auto-detect value)")
 @click.pass_context
-def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, public_ip):
+def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, limit, public_ip):
     null_handler = logbook.NullHandler()
     null_handler.push_application()
 
@@ -70,7 +72,7 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
         OOBDocFeature.server = OOBHttpServer(host=public_ip, port=public_port)
 
     ctx.obj["target_param"] = target_parameter
-    request_maker = RequestMaker(target, method, arguments, target_parameter if target_parameter != "*" else None, checker=checker)
+    request_maker = RequestMaker(target, method, arguments, target_parameter if target_parameter != "*" else None, checker=checker, limit_request = limit)
     ctx.obj["detector"] = detector.Detector(checker, request_maker)
 
 
@@ -137,6 +139,116 @@ def retrieve(ctx, query, output, format):
 
     output_class = XMLOutput if format == "xml" else JSONOutput
     run_then_return(display_results(output_class(output), executor, E(query)))
+
+@run.command(help="Attempt to retrieve an overview of the XML document. This will only return partial information about the structure of the document.")
+@click.option("--query", default="/*[1]", help="Query to retrieve. Defaults to root node (/*[1])")
+@click.option("--output", type=click.File('wb'), default="-", help="Location to output XML to")
+@click.option("--format", type=click.Choice(["xml", "json"]), default="xml", help="Format for output")
+@click.pass_context
+def simple(ctx, query, output, format):
+    click.echo("Retrieving overview")
+    executor = ctx.obj["executor"]
+
+    output_class = XMLOutput if format == "xml" else JSONOutput
+    out = output_class(output)
+
+    run_then_return(display_results(out, executor, E(query), simple=True))
+
+@run.command(help="Let's you manually explore the XML file with a console.")
+@click.pass_context
+def console(ctx):
+    click.echo("Opening console")
+
+    current_node = "/*[1]"
+    executor = ctx.obj["executor"]
+
+    @asyncio.coroutine
+    def command_attr(node, params):
+        attribute_count   = yield from executor.count_nodes(node.attributes)
+        attributes_result = yield from executor.get_attributes(node, attribute_count)
+
+        if attribute_count == 0:
+            click.echo("No attributes found.")
+        else:
+            for name in attributes_result:
+                if not name == "":
+                    click.echo("%s = %s" % (name, attributes_result[name]))
+
+    @asyncio.coroutine
+    def command_ls(node, params):
+        child_node_count_result = yield from executor.count_nodes(node.children)
+        click.echo("%i child node found." % child_node_count_result)
+
+        futures = map(asyncio.Task, (executor.get_string(child.name) for child in node.children(child_node_count_result) ))
+        results = (yield from asyncio.gather(*futures))
+        
+        for result in results:
+            click.echo(result)
+
+    @asyncio.coroutine
+    def command_cd(node, params):
+        if len(params) < 1:
+            click.echo("You must specify a node to navigate to.")
+            return
+
+        selected_node = params[0]
+
+        # We consider anything that starts with a slash is an absolute path
+        if selected_node[0] == "/":
+            new_node = selected_node
+        elif selected_node == "..":
+            new_node = "/".join(current_node.split("/")[:-1])
+        elif selected_node == ".":
+            new_node = current_node
+        else:
+            new_node = current_node + "/" + selected_node
+
+        if (yield from executor.is_empty_string(E(new_node).name)):
+            click.echo("Node does not exists.")
+        else:
+            return new_node
+
+    @asyncio.coroutine
+    def command_content(node, params):
+        text_count = yield from executor.count_nodes(node.text)
+        click.echo((yield from executor.get_node_text(node, text_count)))
+
+    @asyncio.coroutine
+    def command_comment(node, params):
+        comment_count = yield from executor.count_nodes(node.comments)
+        click.echo("%i comment node found." % comment_count)
+
+        for comment in (yield from executor.get_comments(node, comment_count)):
+            click.echo("<!-- %s -->" % comment)
+
+    @asyncio.coroutine
+    def command_name(node, params):
+        node_name = yield from executor.get_string(E(current_node).name)
+        click.echo(node_name)
+
+    commands = {
+        "ls"      : command_ls,
+        "attr"    : command_attr,
+        "cd"      : command_cd,
+        "content" : command_content,
+        "comment" : command_comment,
+        "name"    : command_name
+    }
+
+    while True:
+        command = click.prompt("%s : " % current_node, prompt_suffix="")
+        command_part = command.split(" ")
+        command_name = command_part[0]
+        parameters = command_part[1:]
+
+        if command_name in commands:
+            command_execution = commands[command_name](E(current_node), parameters)
+            new_node = run_then_return(command_execution)
+
+            if not new_node == None:
+                current_node = new_node
+        else:
+            click.echo("Unknown command")
 
 
 @run.command(help="Read arbitrary files from the filesystem")
@@ -259,17 +371,17 @@ def get_injectors(detector, with_features=False):
 
 
 @asyncio.coroutine
-def display_results(output, executor, target_node, first=True):
+def display_results(output, executor, target_node, simple=False, first=True):
     if first:
         output.output_started()
 
     children = []
-    node = yield from executor.retrieve_node(target_node)
+    node = yield from executor.retrieve_node(target_node, simple)
     output.output_start_node(node)
 
     if node.child_count > 0:
         for child in target_node.children(node.child_count):
-            children.append((yield from display_results(output, executor, child, first=False)))
+            children.append((yield from display_results(output, executor, child, simple, first=False)))
 
     output.output_end_node(node)
     data = node._replace(children=children)
@@ -278,7 +390,6 @@ def display_results(output, executor, target_node, first=True):
         output.output_finished()
 
     return data
-
 
 def run_then_return(generator):
     future = asyncio.Task(generator)
