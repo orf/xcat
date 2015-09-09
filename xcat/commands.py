@@ -1,45 +1,20 @@
-"""
-XCat.
-
-Usage:
-    xcat <url>
-    xcat get-uri <url>
-    xcat test-injection <url>
-    xcat file-shell <url>
-    xcat console <url>
-    xcat structure <url>
-    xcat retrieve <urL> --query='/*[1]'
-
-Options:
-    -t, --target=<target>   The vulnerable parameter (in URL or body)
-    --match, -m             String to match against
-    --method=<method>       HTTP Method to use for requests [default: GET].
-    --true                  Indicates match_string is a True response.
-    --false                 Indicates match_string is a False response.
-    --debug                 Debug requests and responses.
-    --public-ip=<ip>        Public IP to use with OOB connects [default: autodetect].
-    --limit=<limit>         Max number of concurrent connections to the target [default: 20].
-    --xversion=<ver>        XCat version to use [default: autodetect].
-    --body=<body_data>      A string that will be sent with the request body.
-    --cookies=<cookies>     A string with all cookies to be sent, or a file containing all cookie data.
-"""
 
 import asyncio
 
 import colorama
 import logbook
 import ipgetter
-from .lib.requests.injectors import get_all_injectors
-from .lib.executors import xpath1, xpath2, docfunction
+from .requests.injectors import get_all_injectors
+from .executors import xpath1, xpath2, docfunction
 from xcat.features.oob_http import OOBDocFeature
-from .lib.features.doc import DocFeature
-from .lib.features.xpath_2 import XPath2
-from .lib.features.entity_injection import EntityInjection
-from .lib.xpath import E, N, document_uri, doc
-from .lib.output import XMLOutput, JSONOutput
-from .lib.requests import detector
-from .lib.requests.requester import RequestMaker
-from .lib.oob.http import OOBHttpServer
+from .features.doc import DocFeature
+from .features.xpath_2 import XPath2
+from .features.entity_injection import EntityInjection
+from .xpath import E, N, document_uri, doc
+from .output import XMLOutput, JSONOutput
+from .requests import detector
+from .requests.requester import RequestMaker
+from .oob.http import OOBHttpServer
 
 colorama.init()
 
