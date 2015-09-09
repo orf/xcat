@@ -21,11 +21,6 @@ colorama.init()
 
 def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, limit,
          public_ip):
-    null_handler = logbook.NullHandler()
-    null_handler.push_application()
-
-    out_handler = logbook.StreamHandler(logfile, level=getattr(logbook, loglevel.upper()))
-    out_handler.push_application()
 
     if detection_method == "true":
         checker = lambda r, b: match_string in b
@@ -39,22 +34,7 @@ def xcat(ctx, target, arguments, target_parameter, match_string, method, detecti
 
     public_port = int(public_port)
 
-    if public_ip == "autodetect":
-        try:
-            public_ip = ipgetter.IPgetter().get_externalip()
-        except Exception:
-            click.echo("Could not detect public IP, please explicitly specify")
-            ctx.exit()
-        click.echo("External IP: {}".format(public_ip))
-
-    if public_ip is not None:
-        # Hack Hack Hack:
-        # Setup an OOB http server instance on the doc feature class
-        OOBDocFeature.server = OOBHttpServer(host=public_ip, port=public_port)
-
     ctx.obj["target_param"] = target_parameter
-    request_maker = RequestMaker(target, method, arguments, target_parameter if target_parameter != "*" else None,
-                                 checker=checker, limit_request=limit)
     ctx.obj["detector"] = detector.Detector(checker, request_maker)
 
 

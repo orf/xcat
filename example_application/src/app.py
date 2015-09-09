@@ -26,9 +26,10 @@ def index():
     xpath_query = "/*/rentals/{type}/*[{filter}]".format(type=search_type,
                                                          filter=xpath_filter)
 
-    results, run_time = run_xpath_query(xpath_query)
+    results, run_time, error = run_xpath_query(xpath_query)
     response = Response(render_template("index.jinja2", results=results, query=orig_title_query))
     response.headers["X-java-time"] = run_time
+    response.headers["X-query"] = xpath_query
     return response
 
 
@@ -37,27 +38,30 @@ def run_xpath_query(query):
     args = ["java", "-Xms30m", "-cp", str(saxon_jar), "net.sf.saxon.Query", library_arg, "-", "-wrap", "-ext:off"]
 
     start = time.time()
-
-    p = run(args, stdout=Capture(), cwd=os.getcwd(), input=query)
+    p = run(args, stdout=Capture(), stderr=Capture(), cwd=os.getcwd(), input=query)
     output = p.stdout.read()
+    error = p.stderr.read()
 
-    tree = etree.fromstring(output)
-
-    returner = [
-        parse_item(result) for result in tree.getchildren()
-    ]
+    try:
+        tree = etree.fromstring(output)
+        returner = [
+            parse_item(result) for result in tree.getchildren()
+            ]
+    except Exception:
+        returner = []
 
     end = time.time()
-    print("[{time:1.4f}] {cmd}".format(time=end-start, cmd=" ".join(args)))
+    print("[{time:1.4f}] {cmd}".format(time=end - start, cmd=query))
 
-    return returner, end-start
+    return returner, end - start, error
 
 
 def parse_item(result):
     children = result.find("./*").getchildren()
     return {
         child.tag: child.text for child in children
-    }
+        }
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="localhost")

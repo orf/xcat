@@ -9,10 +9,12 @@ import asyncio
 
 from ..xpath import Expression
 
+
 class RequestMaker(object):
-    def __init__(self, url, method, working_data, target_parameter, checker, limit_request=20, features=None, injector=None):
+    def __init__(self, url, method, target_parameter, checker, limit_request=20, features=None, injector=None):
         self.url = url
         self.method = method
+
         if isinstance(working_data, str):
             self.working_data = parse.parse_qs(working_data)
         else:
@@ -62,7 +64,7 @@ class RequestMaker(object):
         # Limit the number of concurrent request
         with (yield from self.semaphore):
             self.logger.debug("Sending request with data {}", data)
-    
+
             if isinstance(data, dict):
                 data = parse.urlencode(data, doseq=True)
             elif isinstance(data, Expression):
@@ -73,9 +75,9 @@ class RequestMaker(object):
                 url = self.url + "?" + data
                 data = None
             else:
-               url = self.url
+                url = self.url
 
-            response = yield from aiohttp.request(self.method, url,  data=data)
+            response = yield from aiohttp.request(self.method, url, data=data)
             body = (yield from response.read_and_close()).decode("utf-8")
             return response, body
 
@@ -90,7 +92,7 @@ class RequestMaker(object):
 
     def binary_search(self, expression, min=0, max=25):
         if (yield from self.send_payload(payload=expression > max)):
-            return (yield from self.binary_search(expression, min=max, max=max*2))
+            return (yield from self.binary_search(expression, min=max, max=max * 2))
 
         while True:
             if max < min:
