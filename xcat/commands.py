@@ -1,4 +1,3 @@
-
 import asyncio
 
 import colorama
@@ -19,91 +18,26 @@ from .oob.http import OOBHttpServer
 colorama.init()
 
 
-def xcat(ctx, target, arguments, target_parameter, match_string, method, detection_method, loglevel, logfile, limit,
-         public_ip):
-
-    if detection_method == "true":
-        checker = lambda r, b: match_string in b
-    else:
-        checker = lambda r, b: not match_string in b
-
-    public_ip, public_port = public_ip.split(":") if public_ip and ":" in public_ip else (public_ip, "0")
-    if not public_port.isdigit():
-        print("Error: Port is not a number")
-        ctx.exit(-1)
-
-    public_port = int(public_port)
-
-    ctx.obj["target_param"] = target_parameter
-    ctx.obj["detector"] = detector.Detector(checker, request_maker)
+def get(executor, query, output):
+    run_then_return(
+        display_results(output, executor, E(query))
+    )
 
 
-def run(ctx, injector, xversion):
-    if ctx.obj["target_param"] == "*":
-        click.echo("Please specify a valid target parameter!")
-        ctx.exit(1)
-
-    detector = ctx.obj["detector"]
-
-    if injector == "autodetect":
-        injectors = run_then_return(get_injectors(detector, with_features=False))
-        if len(injectors) == 0:
-            click.echo("Could not autodetect a suitable injection, please explicitly specify")
-            ctx.exit(1)
-        elif len(injectors) > 1:
-            click.echo("Multiple ways to inject parameter, please specify.")
-            click.echo("Injectors: " + ", ".join([i.name() for i in injectors]))
-            click.echo("Run test_injection for more info")
-            ctx.exit(1)
-        injector = list(injectors.keys())[0]
-    else:
-        injector = get_all_injectors()[injector]
-
-    click.echo("Injecting using {}".format(injector.name()))
-
-    click.echo("Detecting features...")
-    features = run_then_return(detector.detect_features(injector))
-    click.echo("Supported features: {}".format(", ".join(feature.NAME for feature in features)))
-
-    if XPath2 not in features and xversion == "2":
-        click.echo("XPath version specified as 2 but could not detect XPath2 support. Will try anyway")
-
-    executor = xpath1.XPath1Executor
-
-    if xversion == "autodetect" and XPath2 in features:
-        executor = xpath2.XPath2Executor
-    elif xversion == "2":
-        executor = xpath2.XPath2Executor
-
-    if OOBDocFeature in features:
-        executor = docfunction.DocFunctionExecutor
-
-    ctx.obj["injector"] = injector
-    ctx.obj["requester"] = detector.get_requester(injector, features=features)
-    ctx.obj["executor"] = executor(ctx.obj["requester"])
+def structure(executor, query, output):
+    run_then_return(
+        display_results(output, executor, E(query), simple=True)
+    )
 
 
-def retrieve(ctx, query, output, format):
-    click.echo("Retrieving {}".format(query))
-    executor = ctx.obj["executor"]
-
-    output_class = XMLOutput if format == "xml" else JSONOutput
-    run_then_return(display_results(output_class(output), executor, E(query)))
-
-
-def structure(ctx, query, output, format):
-    click.echo("Retrieving overview")
-    executor = ctx.obj["executor"]
-
-    output_class = XMLOutput if format == "xml" else JSONOutput
-    out = output_class(output)
-
-    run_then_return(display_results(out, executor, E(query), simple=True))
+def get_uri(executor, out):
+    uri = run_then_return(
+        executor.get_string(document_uri(N("/")))
+    )
+    out.write("URI: {uri}\n".format(uri=uri))
 
 
 def console(ctx):
-    click.echo("Opening console")
-
     current_node = "/*[1]"
     executor = ctx.obj["executor"]
 
@@ -264,15 +198,6 @@ def file_shell(ctx):
                 click.echo("Error reading file. Try another mode: {0}".format(e))
 
 
-def get_uri(ctx):
-    click.echo("Retrieving URI...")
-    executor = ctx.obj["executor"]
-    uri = run_then_return(
-        executor.get_string(document_uri(N("/")))
-    )
-    click.echo("URI: {}".format(uri))
-
-
 def test_injection(ctx):
     detector = ctx.obj["detector"]
 
@@ -297,20 +222,6 @@ def test_injection(ctx):
 
             for feature in features:
                 click.echo("\t- {}".format(feature.__name__))
-
-
-@asyncio.coroutine
-def get_injectors(detector, with_features=False):
-    injectors = yield from detector.detect_injectors()
-    if not with_features:
-        return {i: [] for i in injectors}
-    # Doesn't work it seems. Shame :(
-    # return{injector: (yield from detector.detect_features(injector))
-    #        for injector in injectors}
-    returner = {}
-    for injector in injectors:
-        returner[injector] = (yield from detector.detect_features(injector))
-    return returner
 
 
 @asyncio.coroutine

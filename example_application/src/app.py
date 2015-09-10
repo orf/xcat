@@ -27,6 +27,8 @@ def index():
                                                          filter=xpath_filter)
 
     results, run_time, error = run_xpath_query(xpath_query)
+    if error:
+        print(error.decode())
     response = Response(render_template("index.jinja2", results=results, query=orig_title_query))
     response.headers["X-java-time"] = run_time
     response.headers["X-query"] = xpath_query
@@ -34,6 +36,11 @@ def index():
 
 
 def run_xpath_query(query):
+    """
+    This executes an xpath query against library.xml. It's horrible and relies on calling an external .jar file,
+    which makes it very expensive (0.4s per query). Oh well.
+    """
+
     library_arg = "-s:{library} ".format(library=library)
     args = ["java", "-Xms30m", "-cp", str(saxon_jar), "net.sf.saxon.Query", library_arg, "-", "-wrap", "-ext:off"]
 

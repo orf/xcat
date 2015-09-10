@@ -8,7 +8,6 @@ from ..xpath import count, string
 
 
 class DocFunctionExecutor(XPath2Executor):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.feature = self.requester.get_feature(OOBDocFeature)
@@ -45,7 +44,7 @@ class DocFunctionExecutor(XPath2Executor):
         attribute_count, child_count, text_count, comment_count = map(int, result[1:])
 
         if simple:
-            attributes = { "att%i" % i : "att%i_placeholder" % i for i in range(attribute_count) }
+            attributes = {"att%i" % i: "att%i_placeholder" % i for i in range(attribute_count)}
             node_text = "%i text node" % text_count if text_count > 0 else ""
             comments = ["%i comment node" % comment_count] if comment_count > 0 else []
         else:

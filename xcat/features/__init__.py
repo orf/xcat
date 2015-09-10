@@ -31,6 +31,7 @@ class BaseFeature(object):
 
         return True
 
+
 from .substring_search import EfficientSubstringSearch
 from .xpath_2 import XPath2
 from .codepointsearch import CodepointSearch
@@ -52,7 +53,7 @@ _features = [
 def get_available_features(requester):
     feature_instances = [
         f() for f in _features
-    ]
+        ]
     futures = map(asyncio.Task, (f.is_available(requester) for f in feature_instances))
     results = (yield from asyncio.gather(*futures))
     return (feature_instances[i] for i, result in enumerate(results) if result is True)

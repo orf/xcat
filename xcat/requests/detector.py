@@ -45,7 +45,7 @@ class Detector(object):
         return x
 
     @asyncio.coroutine
-    def detect_injectors(self):
+    def detect_injectors(self, unstable=False):
         """
         Work out how to send a request
         """
@@ -58,18 +58,18 @@ class Detector(object):
                     ElementNameInjection,
                     FunctionCallInjection):
             inst = cls(self)
-            if (yield from inst.test()):
+            if (yield from inst.test(unstable)):
                 injectors.append(inst)
 
         return injectors
 
-    def detect_url_stable(self, data, n=5, expected_result=True):
+    def detect_url_stable(self, data, request_count=5, expected_result=True):
         """
         See if this data is stable (requests return the same code) n times
         """
-        logger.info("Testing if URL is stable with {0} requests, expecting {1} response", n, expected_result)
+        logger.info("Testing if URL is stable with {0} requests, expecting {1} response", request_count, expected_result)
 
-        gathered_results = yield from asyncio.wait([self.requests.send_request(data) for _ in range(n)])
+        gathered_results = yield from asyncio.wait([self.requests.send_request(data) for _ in range(request_count)])
         results = [r.result() == expected_result for r in gathered_results[0]]
         if all(results):
             logger.info("URL is stable")

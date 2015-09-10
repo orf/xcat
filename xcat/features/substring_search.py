@@ -5,7 +5,7 @@ from . import BaseFeature
 from ..xpath import substring_before, string_length
 
 
-SEARCH_SPACE = string.ascii_letters + string.digits + string.punctuation + " \r\n\t"
+SEARCH_SPACE = string.ascii_letters + string.digits
 
 
 class EfficientSubstringSearch(BaseFeature):

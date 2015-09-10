@@ -53,11 +53,10 @@ class OOBDocFeature(BaseFeature):
 
         yield from requester.send_payload(
             doc(concat("{}/{}?".format(self.server.location, identifier),
-                       *[concat("d=", encode_for_uri(e), "&") for e in expressions]))
+                       *[concat("d=", encode_for_uri(e), "&amp;") for e in expressions]))
         )
         try:
             result = yield from asyncio.wait_for(future, 5)
         except asyncio.TimeoutError:
-            #logger.error("5 second timeout expired waiting for doc() postback.")
             return None
         return result["d"]

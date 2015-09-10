@@ -40,7 +40,7 @@ class Injection(object):
         self.logger = logbook.Logger(self.__class__.__name__)
         self.kind = None
 
-    def test(self):
+    def test(self, unstable=False):
         payloads = self.create_test_payloads()
         if isinstance(payloads, tuple):
             payloads = {None: payloads}
@@ -52,7 +52,10 @@ class Injection(object):
                 self.logger.info("Testing payload {0}", payload)
                 new_data = self.detector.requests.get_query_data(payload)
 
-                if not (yield from self.detector.detect_url_stable(new_data, expected_result=expected_result)):
+                count = 1 if not unstable else 5
+
+                if not (yield from self.detector.detect_url_stable(new_data, request_count=count,
+                                                                   expected_result=expected_result)):
                     self.logger.info("Payload {0} is not stable", payload)
                     break
             else:
@@ -61,7 +64,7 @@ class Injection(object):
                 return True
 
         return False
-    
+
     @property
     def example(self):
         return self.example_text if self.example_text is not None else self.get_example()

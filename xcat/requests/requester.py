@@ -12,13 +12,14 @@ from ..xpath import Expression
 
 class RequestMaker(object):
     def __init__(self, url, method, target_parameter, checker, limit_request=20, features=None, injector=None):
-        self.url = url
         self.method = method
+        self.original_url = url
+        parsed = parse.urlparse(url)
 
-        if isinstance(working_data, str):
-            self.working_data = parse.parse_qs(working_data)
-        else:
-            self.working_data = working_data
+        self.url = "{scheme}://{netloc}{path}".format(scheme=parsed.scheme, netloc=parsed.netloc, path=parsed.path)
+
+        qs = parse.urlparse(url).query
+        self.working_data = parse.parse_qs(qs)
 
         if target_parameter:
             self.set_target_parameter(target_parameter)
@@ -52,8 +53,8 @@ class RequestMaker(object):
         return self.features[cls]
 
     def with_injector(self, injector):
-        return RequestMaker(self.url, self.method, self.working_data,
-                            self.target_parameter, self.checker, self.limit_request, self.features, injector)
+        return RequestMaker(self.original_url, self.method, self.target_parameter, self.checker,
+                            self.limit_request, self.features, injector)
 
     def get_query_data(self, new_target_data):
         new_dict = copy.deepcopy(self.working_data)
