@@ -1,14 +1,18 @@
-from flask import Flask, request, render_template, Response
-from sarge import run, Capture
 import pathlib
 import os
-from lxml import etree
 import time
+import sys
+
+from flask import Flask, request, render_template, Response
+from sarge import run, Capture
+from lxml import etree
 
 app = Flask(__name__)
 
 saxon_jar = pathlib.Path("saxon") / "saxon9he.jar"
 library = pathlib.Path("library.xml")
+
+XPATH_1 = "-x1" in sys.argv
 
 
 @app.route("/")
@@ -26,16 +30,34 @@ def index():
     xpath_query = "/*/rentals/{type}/*[{filter}]".format(type=search_type,
                                                          filter=xpath_filter)
 
-    results, run_time, error = run_xpath_query(xpath_query)
-    if error:
-        print(error.decode())
+    if XPATH_1:
+        results, run_time = run_xpath1_query(xpath_query)
+    else:
+        results, run_time, error = run_xpath2_query(xpath_query)
+        if error:
+            print(error.decode())
+
     response = Response(render_template("index.jinja2", results=results, query=orig_title_query))
     response.headers["X-java-time"] = run_time
     response.headers["X-query"] = xpath_query
+    print("[{time:1.4f}] {cmd}".format(time=run_time, cmd=xpath_query))
     return response
 
 
-def run_xpath_query(query):
+def run_xpath1_query(query):
+    t1 = time.time()
+    with open("library.xml", "rb") as fd:
+        tree = etree.parse(fd)
+    try:
+        results = tree.xpath(query)
+        return [
+            parse_item(result) for result in results
+            ], time.time()-t1
+    except Exception:
+        return []
+
+
+def run_xpath2_query(query):
     """
     This executes an xpath query against library.xml. It's horrible and relies on calling an external .jar file,
     which makes it very expensive (0.4s per query). Oh well.
@@ -52,19 +74,17 @@ def run_xpath_query(query):
     try:
         tree = etree.fromstring(output)
         returner = [
-            parse_item(result) for result in tree.getchildren()
+            parse_item(result.find("./*")) for result in tree.getchildren()
             ]
     except Exception:
         returner = []
 
     end = time.time()
-    print("[{time:1.4f}] {cmd}".format(time=end - start, cmd=query))
-
     return returner, end - start, error
 
 
 def parse_item(result):
-    children = result.find("./*").getchildren()
+    children = result.getchildren()
     return {
         child.tag: child.text for child in children
         }

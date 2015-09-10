@@ -125,7 +125,6 @@ class OOBHttpServer(object):
     def stop(self):
         if self.server is None:
             return  # raise RuntimeError("Server has not been started!")
-        print("Stopping server")
         self.server.close()
         self.server = None
 
