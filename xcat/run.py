@@ -45,6 +45,7 @@ from xcat.oob.http import OOBHttpServer
 from xcat.requests import RequestMaker, detector
 from xcat.commands import run_then_return, get_injectors
 from xcat.output import XMLOutput
+from xcat import matchmaker
 
 logger = logging.getLogger("xcat")
 logger.setLevel(logging.ERROR)
@@ -67,6 +68,7 @@ def run():
     listen_ip = arguments["--ip"]
     unstable = arguments["--unstable"]
     xversion = arguments["--xversion"]
+    match_method = arguments["--match-method"]
 
     allowed_commands = {"get", "test", "uri", "file-shell", "console", "structure"}
     if command not in allowed_commands:
@@ -76,15 +78,16 @@ def run():
         ))
         sys.exit(-1)
 
+    if match_method not in matchmaker.allowed_match_methods:
+        logger.error("Unknown match method {method}. Allowed: {allowed}".format(
+            method=match_method,
+            allowed=" ".join(matchmaker.allowed_match_methods)
+        ))
+
     if not arguments["--true"] and not arguments["--false"]:
         arguments["--true"] = True
 
-    if arguments["--true"]:
-        checker = lambda r, b: match_string in b
-    else:
-        checker = lambda r, b: match_string not in b
-
-    # Validate the inputs
+    checker = matchmaker.make_matchmaker(match_string, match_method, is_true=arguments["--true"])
 
     try:
         listen_port = int(listen_port)
