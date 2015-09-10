@@ -3,10 +3,9 @@
 from urllib import parse
 import copy
 import asyncio
-import logging
 
 import aiohttp
-import logbook
+import logging
 from ..xpath import Expression
 
 logger = logging.getLogger("xcat.requests")
@@ -32,8 +31,6 @@ class RequestMaker(object):
         self.injector = injector
         self.limit_request = limit_request
         self.semaphore = asyncio.Semaphore(limit_request)
-
-        self.logger = logbook.Logger("RequestMaker")
 
     def set_target_parameter(self, target_parameter):
         self.param_value = self.working_data[target_parameter][0]
@@ -66,7 +63,7 @@ class RequestMaker(object):
     def send_raw_request(self, data):
         # Limit the number of concurrent request
         with (yield from self.semaphore):
-            self.logger.debug("Sending request with data {}", data)
+            logger.debug("Sending request with data {}", data)
 
             if isinstance(data, dict):
                 data = parse.urlencode(data, doseq=True)

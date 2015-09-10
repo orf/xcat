@@ -1,12 +1,12 @@
 import asyncio
+import logging
 
-import logbook
 from . import BaseFeature
 from ..xpath import doc, concat, encode_for_uri
 from ..oob import http
 
 
-logger = logbook.Logger("DocFeature")
+logger = logging.getLogger("xcat.oob")
 
 
 class OOBDocFeature(BaseFeature):

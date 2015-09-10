@@ -1,7 +1,7 @@
 import logging
 from collections import namedtuple
 
-import logbook
+import logging
 from ..xpath import E, L
 
 
@@ -36,7 +36,7 @@ class Injection(object):
     def __init__(self, detector):
         self.detector = detector
         self.working_value = self.detector.requests.param_value
-        self.logger = logbook.Logger(self.__class__.__name__)
+        self.logger = logging.getLogger("xcat.injectors." + self.__class__.__name__)
         self.kind = None
 
     def test(self, unstable=False):
