@@ -155,6 +155,8 @@ def run():
         logger.error("Unknown command {command}".format(command=command))
         sys.exit(1)
 
+    logger.debug("Made %s requests", requester.request_count)
+
 
 if __name__ == "__main__":
     run()

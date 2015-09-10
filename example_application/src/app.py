@@ -12,7 +12,12 @@ app = Flask(__name__)
 saxon_jar = pathlib.Path("saxon") / "saxon9he.jar"
 library = pathlib.Path("library.xml")
 
-XPATH_1 = "-x1" in sys.argv
+XPATH_1 = "--xpath1" in sys.argv
+
+if XPATH_1:
+    print("Using XPath 1.0")
+else:
+    print("Using XPath 2.0 via {path}".format(path=saxon_jar))
 
 
 @app.route("/")

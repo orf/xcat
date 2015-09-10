@@ -32,6 +32,8 @@ class RequestMaker(object):
         self.limit_request = limit_request
         self.semaphore = asyncio.Semaphore(limit_request)
 
+        self.request_count = 0
+
     def set_target_parameter(self, target_parameter):
         self.param_value = self.working_data[target_parameter][0]
         self.target_parameter = target_parameter
@@ -64,6 +66,7 @@ class RequestMaker(object):
         # Limit the number of concurrent request
         with (yield from self.semaphore):
             logger.debug("Sending request with data {}", data)
+            self.request_count += 1
 
             if isinstance(data, dict):
                 data = parse.urlencode(data, doseq=True)
