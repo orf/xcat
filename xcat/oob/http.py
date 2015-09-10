@@ -123,7 +123,6 @@ class OOBHttpServer(object):
     @asyncio.coroutine
     def start(self, port=None):
         with (yield from self._lock):
-            print("Listening on {}".format(self.port))
             if self.server is not None:
                 return #raise RuntimeError("Server has already been started")
 

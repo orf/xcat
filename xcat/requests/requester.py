@@ -6,8 +6,12 @@ import copy
 import aiohttp
 import logbook
 import asyncio
+import logging
 
 from ..xpath import Expression
+
+
+logger = logging.getLogger("xcat.requests")
 
 
 class RequestMaker(object):
@@ -83,6 +87,7 @@ class RequestMaker(object):
             return response, body
 
     def send_request(self, payload):
+        logger.debug("Sending payload %s", payload)
         response, body = yield from self.send_raw_request(payload)
         self.requests_sent += 1
         return self.checker(response, body)

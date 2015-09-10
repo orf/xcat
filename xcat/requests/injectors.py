@@ -1,4 +1,5 @@
 import logbook
+import logging
 
 from ..xpath import E, L
 from collections import namedtuple
@@ -26,12 +27,10 @@ def get_all_injectors():
 
 Maybe = namedtuple("Maybe", "flag")
 
+logger = logging.getLogger("xcat.injectors")
+
 
 class Injection(object):
-    """
-
-    """
-
     example_text = None
 
     def __init__(self, detector):
@@ -49,17 +48,20 @@ class Injection(object):
 
             for payload, expected_result in payloads[kind]:
                 payload = payload.format(working=self.working_value)
-                self.logger.info("Testing payload {0}", payload)
+                logger.info("Testing payload %s", payload)
                 new_data = self.detector.requests.get_query_data(payload)
 
                 count = 1 if not unstable else 5
+                detect_result = yield from self.detector.detect_url_stable(new_data, request_count=count,
+                                                                           expected_result=expected_result)
 
-                if not (yield from self.detector.detect_url_stable(new_data, request_count=count,
-                                                                   expected_result=expected_result)):
-                    self.logger.info("Payload {0} is not stable", payload)
+                if not detect_result:
+                    logger.info("Payload %s is not stable", payload)
                     break
+                else:
+                    pass
             else:
-                self.logger.info("All payloads are stable, by Jove Watson I think I've got it.")
+                logger.info("All payloads are stable, by Jove Watson I think I've got it.")
                 self.kind = kind
                 return True
 
@@ -83,7 +85,7 @@ class Injection(object):
 
 
 class IntegerInjection(Injection):
-    example_text = "/lib/book[name=?]"
+    example_text = "/lib/book[id=?]"
 
     def create_test_payloads(self):
         return (
@@ -168,7 +170,8 @@ class FunctionCallInjection(Injection):
     def create_test_payloads(self):
         # ToDo: Make this work. Currently doesn't support anything likely to occur in the wild.
         return (
-            ("{working}') and string('1'='1", True),
+            ("{working}') and true() and string('1'='1", True),
+            ("{working}') and false() and string('1'='1", False),
         )
 
     def get_payload(self, expression):

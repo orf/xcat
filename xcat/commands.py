@@ -37,6 +37,56 @@ def get_uri(executor, out):
     out.write("URI: {uri}\n".format(uri=uri))
 
 
+def test(detector, target_parameter, unstable, out):
+    if target_parameter == "*":
+        params = detector.requests.get_url_parameters()
+    else:
+        params = [target_parameter]
+
+    for param in params:
+        out.write("Testing parameter {param}\n".format(param=param))
+        detector.change_parameter(param)
+
+        injectors = run_then_return(get_injectors(
+            detector, with_features=True, unstable=unstable
+        ))
+
+        if len(injectors) == 0:
+            out.write("Could not inject into parameter {param}\n".format(param=param))
+
+        for injector, features in injectors.items():
+            out.write("\t{name}\t\t{example}\n".format(name=injector.__class__.__name__, example=injector.example))
+            for feature in features:
+                out.write("\t\t-{name}\n".format(name=feature.__name__))
+            out.write("\n")
+
+
+def test_injection(ctx):
+    detector = ctx.obj["detector"]
+
+    if ctx.obj["target_param"] == "*":
+        params = detector.requests.get_url_parameters()
+    else:
+        params = [ctx.obj["target_param"]]
+
+    for param in params:
+        click.echo("Testing parameter {}{}{}:".format(colorama.Fore.RED, param, colorama.Fore.RESET))
+        detector = detector.change_parameter(param)
+
+        injectors = run_then_return(get_injectors(detector, with_features=True))
+
+        if len(injectors) == 0:
+            click.echo("Could not inject into parameter. Are you sure it is vulnerable?")
+
+        for injector, features in injectors.items():
+            injector_example = "{}:\t\t{}".format(injector.__class__.__name__, injector.example) \
+                .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
+            click.echo(injector_example)
+
+            for feature in features:
+                click.echo("\t- {}".format(feature.__name__))
+
+
 def console(ctx):
     current_node = "/*[1]"
     executor = ctx.obj["executor"]
@@ -198,32 +248,6 @@ def file_shell(ctx):
                 click.echo("Error reading file. Try another mode: {0}".format(e))
 
 
-def test_injection(ctx):
-    detector = ctx.obj["detector"]
-
-    if ctx.obj["target_param"] == "*":
-        params = detector.requests.get_url_parameters()
-    else:
-        params = [ctx.obj["target_param"]]
-
-    for param in params:
-        click.echo("Testing parameter {}{}{}:".format(colorama.Fore.RED, param, colorama.Fore.RESET))
-        detector = detector.change_parameter(param)
-
-        injectors = run_then_return(get_injectors(detector, with_features=True))
-
-        if len(injectors) == 0:
-            click.echo("Could not inject into parameter. Are you sure it is vulnerable?")
-
-        for injector, features in injectors.items():
-            injector_example = "{}:\t\t{}".format(injector.__class__.__name__, injector.example) \
-                .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
-            click.echo(injector_example)
-
-            for feature in features:
-                click.echo("\t- {}".format(feature.__name__))
-
-
 @asyncio.coroutine
 def display_results(output, executor, target_node, simple=False, first=True):
     if first:
@@ -250,3 +274,17 @@ def run_then_return(generator):
     future = asyncio.Task(generator)
     asyncio.get_event_loop().run_until_complete(future)
     return future.result()
+
+
+@asyncio.coroutine
+def get_injectors(detector, with_features=False, unstable=False):
+    injectors = yield from detector.detect_injectors(unstable)
+    if not with_features:
+        return {i: [] for i in injectors}
+    # Doesn't work it seems. Shame :(
+    # return{injector: (yield from detector.detect_features(injector))
+    #        for injector in injectors}
+    returner = {}
+    for injector in injectors:
+        returner[injector] = (yield from detector.detect_features(injector))
+    return returner

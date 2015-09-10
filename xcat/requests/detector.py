@@ -24,9 +24,7 @@ class Detector(object):
         :param target_parameter: A parameter name that the returned detector targets
         :return: A Detector that targets the given URI parameter
         """
-        d = Detector(self.checker, copy.deepcopy(self.requests))
-        d.requests.set_target_parameter(target_parameter)
-        return d
+        self.requests.set_target_parameter(target_parameter)
 
     def get_requester(self, injector, features=None):
         requester = self.requests.with_injector(injector)
