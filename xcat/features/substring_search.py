@@ -4,7 +4,6 @@ import asyncio
 from . import BaseFeature
 from ..xpath import substring_before, string_length
 
-
 SEARCH_SPACE = string.ascii_letters + string.digits
 
 

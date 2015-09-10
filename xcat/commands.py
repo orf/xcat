@@ -1,19 +1,12 @@
 import asyncio
+import sys
 
 import colorama
-import logbook
-import ipgetter
-from .requests.injectors import get_all_injectors
-from .executors import xpath1, xpath2, docfunction
 from xcat.features.oob_http import OOBDocFeature
 from .features.doc import DocFeature
-from .features.xpath_2 import XPath2
 from .features.entity_injection import EntityInjection
 from .xpath import E, N, document_uri, doc
-from .output import XMLOutput, JSONOutput
-from .requests import detector
-from .requests.requester import RequestMaker
-from .oob.http import OOBHttpServer
+from .output import XMLOutput
 
 colorama.init()
 
@@ -61,35 +54,8 @@ def test(detector, target_parameter, unstable, out):
             out.write("\n")
 
 
-def test_injection(ctx):
-    detector = ctx.obj["detector"]
-
-    if ctx.obj["target_param"] == "*":
-        params = detector.requests.get_url_parameters()
-    else:
-        params = [ctx.obj["target_param"]]
-
-    for param in params:
-        click.echo("Testing parameter {}{}{}:".format(colorama.Fore.RED, param, colorama.Fore.RESET))
-        detector = detector.change_parameter(param)
-
-        injectors = run_then_return(get_injectors(detector, with_features=True))
-
-        if len(injectors) == 0:
-            click.echo("Could not inject into parameter. Are you sure it is vulnerable?")
-
-        for injector, features in injectors.items():
-            injector_example = "{}:\t\t{}".format(injector.__class__.__name__, injector.example) \
-                .replace("?", colorama.Fore.GREEN + "?" + colorama.Fore.RESET)
-            click.echo(injector_example)
-
-            for feature in features:
-                click.echo("\t- {}".format(feature.__name__))
-
-
-def console(ctx):
+def console(executor):
     current_node = "/*[1]"
-    executor = ctx.obj["executor"]
 
     @asyncio.coroutine
     def command_attr(node, params):
@@ -97,28 +63,28 @@ def console(ctx):
         attributes_result = yield from executor.get_attributes(node, attribute_count)
 
         if attribute_count == 0:
-            click.echo("No attributes found.")
+            print("No attributes found.")
         else:
             for name in attributes_result:
                 if not name == "":
-                    click.echo("%s = %s" % (name, attributes_result[name]))
+                    print("%s = %s" % (name, attributes_result[name]))
 
     @asyncio.coroutine
     def command_ls(node, params):
         child_node_count_result = yield from executor.count_nodes(node.children)
-        click.echo("%i child node found." % child_node_count_result)
+        print("%i child node found." % child_node_count_result)
 
         futures = map(asyncio.Task,
                       (executor.get_string(child.name) for child in node.children(child_node_count_result)))
         results = (yield from asyncio.gather(*futures))
 
         for result in results:
-            click.echo(result)
+            print(result)
 
     @asyncio.coroutine
     def command_cd(node, params):
         if len(params) < 1:
-            click.echo("You must specify a node to navigate to.")
+            print("You must specify a node to navigate to.")
             return
 
         selected_node = params[0]
@@ -134,27 +100,32 @@ def console(ctx):
             new_node = current_node + "/" + selected_node
 
         if (yield from executor.is_empty_string(E(new_node).name)):
-            click.echo("Node does not exists.")
+            print("Node does not exists.")
         else:
             return new_node
 
     @asyncio.coroutine
     def command_content(node, params):
         text_count = yield from executor.count_nodes(node.text)
-        click.echo((yield from executor.get_node_text(node, text_count)))
+        print((yield from executor.get_node_text(node, text_count)))
 
     @asyncio.coroutine
     def command_comment(node, params):
         comment_count = yield from executor.count_nodes(node.comments)
-        click.echo("%i comment node found." % comment_count)
+        print("%i comment node found." % comment_count)
 
         for comment in (yield from executor.get_comments(node, comment_count)):
-            click.echo("<!-- %s -->" % comment)
+            print("<!-- %s -->" % comment)
 
     @asyncio.coroutine
     def command_name(node, params):
         node_name = yield from executor.get_string(E(current_node).name)
-        click.echo(node_name)
+        print(node_name)
+
+    @asyncio.coroutine
+    def command_xml(node, params):
+        print("This may take some time depending on the size of the node.")
+        yield from display_results(XMLOutput(sys.stdout, include_start=False), executor, node)
 
     commands = {
         "ls": command_ls,
@@ -162,11 +133,14 @@ def console(ctx):
         "cd": command_cd,
         "content": command_content,
         "comment": command_comment,
-        "name": command_name
+        "name": command_name,
+        "xml": command_xml
     }
 
+    print("Warning: using cd to go to an invalid expression will cause bad things to happen.")
+
     while True:
-        command = click.prompt("%s : " % current_node, prompt_suffix="")
+        command = input("{node} : ".format(node=current_node))
         command_part = command.split(" ")
         command_name = command_part[0]
         parameters = command_part[1:]
@@ -178,7 +152,7 @@ def console(ctx):
             if not new_node == None:
                 current_node = new_node
         else:
-            click.echo("Unknown command")
+            print("Unknown command")
 
 
 def file_shell(ctx):

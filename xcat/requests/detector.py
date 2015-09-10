@@ -1,6 +1,5 @@
 # I work out *how* to inject payloads into requests
 import asyncio
-import copy
 
 import logbook
 from .injectors import IntegerInjection, StringInjection, AttributeNameInjection, \

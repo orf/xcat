@@ -1,8 +1,8 @@
-import logbook
 import logging
-
-from ..xpath import E, L
 from collections import namedtuple
+
+import logbook
+from ..xpath import E, L
 
 
 # When injecting input into a vulnerable XPath query the injection point could be in several places (denoted by ?):

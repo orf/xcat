@@ -143,12 +143,10 @@ def run():
 
     if command == "get":
         commands.get(executor, "/*[1]", XMLOutput(sys.stdout))
-    elif command == "test":
-        pass
     elif command == "file-shell":
         pass
     elif command == "console":
-        pass
+        commands.console(executor)
     elif command == "structure":
         commands.structure(executor, "/*[1]", XMLOutput(sys.stdout))
     elif command == "uri":

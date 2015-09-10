@@ -1,10 +1,6 @@
-import io
 from xml.sax.saxutils import XMLGenerator, escape
 import contextlib
-import json
 import abc
-
-import xmltodict
 
 
 class Output(abc.ABC):
@@ -60,12 +56,14 @@ class XMLGeneratorWithComments(XMLGenerator):
 
 
 class XMLOutput(Output):
-    def __init__(self, fd=None):
+    def __init__(self, fd=None, include_start=True):
         super().__init__(fd)
+        self.include_start=include_start
         self.writer = XMLGeneratorWithComments(self.output, "utf-8")
 
     def output_started(self):
-        self.writer.startDocument()
+        if self.include_start:
+            self.writer.startDocument()
         self.flush()
 
     def output_start_node(self, node):
@@ -85,18 +83,3 @@ class XMLOutput(Output):
     def output_finished(self):
         self.writer.endDocument()
         self.flush()
-
-
-class JSONOutput(XMLOutput):
-    def __init__(self, fd):
-        # Hijack the FD
-        self.old_fd = fd
-        super().__init__(io.StringIO())
-
-    def output_finished(self):
-        super().output_finished()
-        # self.output will be a StringIO object with some XML inside. Get it's value and convert it to JSON
-        self.output.seek(0)
-        result = xmltodict.parse(self.output.getvalue())
-        self.old_fd.write(bytes(json.dumps(result, indent=4), encoding="utf-8"))
-        self.old_fd.flush()

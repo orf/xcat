@@ -2,14 +2,12 @@
 
 from urllib import parse
 import copy
-
-import aiohttp
-import logbook
 import asyncio
 import logging
 
+import aiohttp
+import logbook
 from ..xpath import Expression
-
 
 logger = logging.getLogger("xcat.requests")
 

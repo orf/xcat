@@ -16,7 +16,8 @@ class XPath1Executor(BaseExecutor):
             return self.requester.get_feature(EfficientSubstringSearch).execute(self.requester, exp)
         else:
             # Fallback to dumb searching
-            return self.requester.dumb_search(string.digits + string.ascii_letters + string.punctuation + " \r\n\t", exp)
+            return self.requester.dumb_search(string.digits + string.ascii_letters + string.punctuation + " \r\n\t",
+                                              exp)
 
     @asyncio.coroutine
     def get_string(self, expression):
@@ -35,8 +36,8 @@ class XPath1Executor(BaseExecutor):
                 char = "?"
 
             return char
-        
-        futures = map(asyncio.Task, (get_string_task(self, expression, i) for i in range(1, string_count + 1) ))
+
+        futures = map(asyncio.Task, (get_string_task(self, expression, i) for i in range(1, string_count + 1)))
         result = (yield from asyncio.gather(*futures))
         return "".join(result)
 
@@ -59,7 +60,7 @@ class XPath1Executor(BaseExecutor):
     @asyncio.coroutine
     def get_attributes(self, node, count):
         attributes = {}
-        
+
         def get_attributes_task(self, attribute):
             attr_name = yield from self.get_string(attribute.name)
             attr_text = yield from self.get_string(attribute)
@@ -91,7 +92,7 @@ class XPath1Executor(BaseExecutor):
             attribute_count = yield from self.count_nodes(node.attributes)
             attributes_result = yield from self.get_attributes(node, attribute_count)
             return attributes_result
-        
+
         def child_node_count(self, node):
             child_node_count_result = yield from self.count_nodes(node.children)
             return child_node_count_result
@@ -113,18 +114,17 @@ class XPath1Executor(BaseExecutor):
         @asyncio.coroutine
         def simple_attributes(self, node):
             attribute_count = yield from self.count_nodes(node.attributes)
-            return { "att%i" % i : "att%i_placeholder" % i for i in range(attribute_count) }
+            return {"att%i" % i: "att%i_placeholder" % i for i in range(attribute_count)}
 
         @asyncio.coroutine
         def simple_text(self, node):
             text_count = yield from self.count_nodes(node.text)
             count_not_empty = 0
-            
+
             for text in node.text(text_count):
                 if not (yield from self.is_empty_string(text)):
                     count_not_empty += 1
-            
-            
+
             if count_not_empty > 0:
                 return "%i text node found." % count_not_empty
             else:
@@ -135,43 +135,43 @@ class XPath1Executor(BaseExecutor):
             comment_count = yield from self.count_nodes(node.comments)
             comments = ["%i comments found." % comment_count] if comment_count > 0 else []
             return comments
-        
+
         @asyncio.coroutine
         def simple_node_name(self, node):
             node_name_length = yield from self.string_length(node.name)
-            
+
             if node_name_length <= 6:
                 node_name_result = yield from self.get_string(node.name)
                 return node_name_result
-            
+
             left_part = yield from self.get_string(substring(node.name, 0, 3))
             right_part = yield from self.get_string(substring(node.name, node_name_length - 3, node_name_length))
             remaining = node_name_length - 6
             return "%s ... %i more chracters  ... %s" % (left_part, remaining, right_part)
-        
+
         if simple:
-    	    tasks = {
-    	        "attributes"       : simple_attributes,
-    	        "child_node_count" : child_node_count,
-    	        "text"             : simple_text,
-    	        "comments"         : simple_comments,
-    	        "node_name"        : simple_node_name
-    	    }
+            tasks = {
+                "attributes": simple_attributes,
+                "child_node_count": child_node_count,
+                "text": simple_text,
+                "comments": simple_comments,
+                "node_name": simple_node_name
+            }
         else:
-    	    tasks = {
-    	        "attributes"       : attributes,
-    	        "child_node_count" : child_node_count,
-    	        "text"             : text,
-    	        "comments"         : comments,
-    	        "node_name"        : node_name
-    	    }
-        
+            tasks = {
+                "attributes": attributes,
+                "child_node_count": child_node_count,
+                "text": text,
+                "comments": comments,
+                "node_name": node_name
+            }
+
         task_list = list(tasks.keys())
-		
-        futures = map(asyncio.Task, (tasks[task_name](self, node) for task_name in task_list ))
+
+        futures = map(asyncio.Task, (tasks[task_name](self, node) for task_name in task_list))
         results = (yield from asyncio.gather(*futures))
         results = dict(zip(task_list, results))
-        
+
         return XMLNode(
             name=results["node_name"],
             attributes=results["attributes"],
