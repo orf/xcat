@@ -1,11 +1,12 @@
 from xml.sax.saxutils import XMLGenerator, escape
 import contextlib
 import abc
+import sys
 
 
 class Output(abc.ABC):
-    def __init__(self, fd=None):
-        self.output = fd or click.get_text_stream("stdout")
+    def __init__(self, fd=sys.stdout):
+        self.output = fd
 
     @abc.abstractmethod
     def output_start_node(self, node):
@@ -57,7 +58,7 @@ class XMLGeneratorWithComments(XMLGenerator):
 
 class XMLOutput(Output):
     def __init__(self, fd=None, include_start=True):
-        super().__init__(fd)
+        super().__init__()
         self.include_start=include_start
         self.writer = XMLGeneratorWithComments(self.output, "utf-8")
 

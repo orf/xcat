@@ -149,45 +149,42 @@ def console(executor):
             command_execution = commands[command_name](E(current_node), parameters)
             new_node = run_then_return(command_execution)
 
-            if not new_node == None:
+            if new_node is not None:
                 current_node = new_node
         else:
             print("Unknown command")
 
 
-def file_shell(ctx):
-    requester = ctx.obj["requester"]
-    click.echo("These are the types of files you can read:")
+def file_shell(requester, executor):
+    print("These are the types of files you can read:")
     if requester.has_feature(EntityInjection):
-        click.echo(" * Arbitrary text files that do not contain XML, or files that do and do not contain '-->'")
+        print(" * Arbitrary text files that do not contain XML, or files that do and do not contain '-->'")
     if requester.has_feature(DocFeature):
-        click.echo(" * Local XML files")
+        print(" * Local XML files")
     if requester.has_feature(OOBDocFeature):
-        click.echo(" * Valid XML files available over the network")
+        print(" * Valid XML files available over the network")
 
     # ToDo: Make this more like a shell, with a current directory etc. Make it more usable :)
-    click.echo("There are three ways to read files on the file system using XPath:")
-    click.echo(" 1. inject: Can read arbitrary text files as long as they do not contain any XML")
-    click.echo(" 2. comment: Can read arbitrary text files containing XML snippets, but cannot contain '-->'")
-    click.echo(
-        " 3. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.")
-    click.echo("Type doc, inject or comment to switch modes. Defaults to inject")
-    click.echo("Type uri to read the URI of the document being queried")
-    click.echo(
-        "Note: The URI should have a protocol prefix. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
-    click.echo("When using the example application use 'file:' as a prefix, not 'file://'.")
+    print("There are three ways to read files on the file system using XPath:")
+    print(" 1. inject: Can read arbitrary text files as long as they do not contain any XML")
+    print(" 2. comment: Can read arbitrary text files containing XML snippets, but cannot contain '-->'")
+    print(" 3. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.")
+    print("Type doc, inject or comment to switch modes. Defaults to inject")
+    print("Type uri to read the URI of the document being queried")
+    print("Note: The URI should have a protocol prefix. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
+    print("When using the example application use 'file:' as a prefix, not 'file://'.")
 
-    try:
-        entity_injection = ctx.obj["requester"].get_feature(EntityInjection)
-    except Exception:
+    if requester.has_feature(EntityInjection):
+        entity_injection = requester.get_feature(EntityInjection)
+    else:
         entity_injection = None
 
     # ToDo: Make doc injection verify that the files exist
     commands = {
-        "doc": lambda p: run_then_return(display_results(XMLOutput(), ctx.obj["executor"], doc(p).add_path("/*[1]"))),
-        "inject": lambda p: click.echo(run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path))),
-        "comment": lambda p: click.echo(
-            run_then_return(entity_injection.get_file(ctx.obj["requester"], file_path, True))),
+        "doc": lambda p: run_then_return(display_results(XMLOutput(), executor, doc(p).add_path("/*[1]"))),
+        "inject": lambda p: print(run_then_return(entity_injection.get_file(requester, file_path))),
+        "comment": lambda p: print(
+            run_then_return(entity_injection.get_file(requester, file_path, True))),
     }
     numbers = {
         "1": "inject",
@@ -197,29 +194,28 @@ def file_shell(ctx):
     mode = "inject"
 
     while True:
-        file_path = click.prompt(">> ", prompt_suffix="")
+        file_path = input(">> ")
         if file_path == "exit":
-            ctx.exit()
+            sys.exit(0)
 
         if file_path == "uri":
-            executor = ctx.obj["executor"]
             uri = run_then_return(
                 executor.get_string(document_uri(N("/")))
             )
-            click.echo("URI: {}".format(uri))
+            print("URI: {}".format(uri))
         elif file_path in commands or file_path in numbers:
             if file_path in numbers:
                 file_path = numbers[file_path]
             mode = file_path
-            click.echo("Switched to {}".format(mode))
+            print("Switched to {}".format(mode))
         else:
             try:
                 commands[mode](file_path)
             except KeyboardInterrupt:
-                click.echo("Command cancelled, CTRL+C again to terminate")
+                print("Command cancelled, CTRL+C again to terminate")
             except Exception as e:
                 import traceback
-                click.echo("Error reading file. Try another mode: {0}".format(e))
+                print("Error reading file. Try another mode: {0}".format(e))
 
 
 @asyncio.coroutine

@@ -144,7 +144,7 @@ def run():
     if command == "get":
         commands.get(executor, "/*[1]", XMLOutput(sys.stdout))
     elif command == "file-shell":
-        pass
+        commands.file_shell(requester, executor)
     elif command == "console":
         commands.console(executor)
     elif command == "structure":

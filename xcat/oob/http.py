@@ -1,80 +1,57 @@
 import asyncio
 import random
-import email
 from urllib import parse
 
-from aiohttp import server
-import aiohttp
+from aiohttp import web
+from functools import partial
+
+TEST_RESPONSE = random.randint(1, 1500)
 
 
-class OOBHttpRequestHandler(server.ServerHttpProtocol):
-    TEST_RESPONSE = random.randint(1, 150)
+@asyncio.coroutine
+def test_handler(server, request):
+    return web.Response(text="<test>{}</test>".format(TEST_RESPONSE), content_type="text/xml")
 
-    def handle_request(self, message, payload):
-        headers = email.message.Message()
-        for hdr, val in message.headers.items():
-            headers.add_header(hdr, val)
 
-        response = aiohttp.Response(
-            self.writer, 200, http_version=message.version
-        )
-        response.add_header('Transfer-Encoding', 'chunked')
+@asyncio.coroutine
+def entity_handler(server, request):
+    file_id = request.match_info["id"]
 
-        accept_encoding = headers.get('accept-encoding', '').lower()
+    use_comment = False
 
-        if 'deflate' in accept_encoding:
-            response.add_header('Content-Encoding', 'deflate')
-            response.add_compression_filter('deflate')
+    if file_id == "test":
+        entity_value = '"{}"'.format(TEST_RESPONSE)
 
-        elif 'gzip' in accept_encoding:
-            response.add_header('Content-Encoding', 'gzip')
-            response.add_compression_filter('gzip')
+    elif server.expecting_identifier(file_id):
+        use_comment, value = server.get_entity_value(file_id)
+        entity_value = 'SYSTEM "{}"'.format(value)
+    else:
+        return web.Response(status=404)
 
-        response.add_chunking_filter(1025)
-        response.add_header('Content-type', 'text/xml')
+    data_value = "&c;"
+    if use_comment:
+        data_value = "<!-- {} -->".format(data_value)
 
-        response.send_headers()
-        parsed = parse.urlparse(message.path)
-        parsed_data = parse.parse_qs(parsed.query)
+    return web.Response(
+        text="<!DOCTYPE stuff [<!ELEMENT data ANY><!ENTITY c {}>]> <data>{}</data>".format(entity_value, data_value),
+        content_type="text/xml"
+    )
 
-        if message.path.startswith("/entity/"):
-            file_id = message.path.replace("/entity/", "")
-            use_comment = False
-            if file_id == "test":
-                entity_value = '"{}"'.format(self.TEST_RESPONSE)
-            elif self.server.expecting_identifier(file_id):
-                use_comment, value = self.server.get_entity_value(file_id)
-                entity_value = 'SYSTEM "{}"'.format(value)
-            else:
-                return response.force_close()
 
-            data_value = "&c;"
-            if use_comment:
-                data_value = "<!-- {} -->".format(data_value)
+@asyncio.coroutine
+def data_handler(server, request):
+    id = request.match_info["id"]
 
-            response.write(bytes("""<!DOCTYPE stuff [
-             <!ELEMENT data ANY>
-             <!ENTITY c {}>
-             ]>
-             <data>{}</data>""".format(entity_value, data_value), "utf-8"))
-        elif message.path == "/test":
-            response.write(bytes("<test>{}</test>".format(self.TEST_RESPONSE), "utf8"))
-        else:
-            identifier = parsed.path.lstrip("/")
-            if not self.server.expecting_identifier(identifier):
-                return response.force_close()
-            if "d" not in parsed_data:
-                parsed_data["d"] = []
+    parsed_data = parse.parse_qs(request.query_string)
 
-            self.server.got_data(identifier, parsed_data)
+    if not server.expecting_identifier(id):
+        return web.Response(status=404)
+    if "d" not in parsed_data:
+        parsed_data["d"] = []
 
-            response.write(bytes("<test>{}</test>".format(identifier), "utf-8"))
-        #else:
-        #    response.write(bytes("Begone!"))
+    server.got_data(id, parsed_data)
 
-        yield from response.write_eof()
-        if response.keep_alive():
-            self.keep_alive(True)
+    return web.Response(text="<test>{id}</test>".format(id=id), content_type="text/xml")
 
 
 class OOBHttpServer(object):
@@ -87,6 +64,11 @@ class OOBHttpServer(object):
         self.tick = 0
         self.server = None
         self.external_ip, self.port = host, port
+
+        self.app = web.Application()
+        self.app.router.add_route("GET", "/test", partial(test_handler, self))
+        self.app.router.add_route("GET", "/entity/{id}", partial(entity_handler, self))
+        self.app.router.add_route("GET", "/{id}", partial(data_handler, self))
 
     def create_handler(self, *args, **kwargs):
         h = OOBHttpRequestHandler(keep_alive=75)
@@ -124,14 +106,14 @@ class OOBHttpServer(object):
     def start(self, port=None):
         with (yield from self._lock):
             if self.server is not None:
-                return #raise RuntimeError("Server has already been started")
+                return  # raise RuntimeError("Server has already been started")
 
             if port:
                 self.port = port
 
             loop = asyncio.get_event_loop()
             self.server = yield from loop.create_server(
-                self.create_handler,
+                self.app.make_handler(),
                 "0.0.0.0", self.port
             )
 
@@ -142,7 +124,7 @@ class OOBHttpServer(object):
 
     def stop(self):
         if self.server is None:
-            return #raise RuntimeError("Server has not been started!")
+            return  # raise RuntimeError("Server has not been started!")
         print("Stopping server")
         self.server.close()
         self.server = None
@@ -154,5 +136,6 @@ class OOBHttpServer(object):
     @property
     def location(self):
         return "http://{}:{}".format(self.external_ip, self.port)
+
 
 default = OOBHttpServer()

@@ -19,7 +19,7 @@ class OOBDocFeature(BaseFeature):
 
     def TEST(self):
         return [
-            doc("{}/test".format(self.server.location)).add_path("/test") == http.OOBHttpRequestHandler.TEST_RESPONSE
+            doc("{}/test".format(self.server.location)).add_path("/test") == http.TEST_RESPONSE
         ]
 
     @asyncio.coroutine

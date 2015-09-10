@@ -13,7 +13,7 @@ setup(name="xcat",
       author_email="tom@tomforb.es",
       package_dir={'xcat': 'xcat'},
       packages=["xcat"],
-      install_requires=["aiohttp", "docopt", "logbook", "xmltodict", 'colorama', 'ipgetter'],
+      install_requires=["aiohttp", "docopt", 'colorama', 'ipgetter'],
       entry_points={
           'console_scripts': [
               'xcat = xcat.run:run'

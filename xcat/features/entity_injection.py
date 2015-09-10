@@ -10,7 +10,7 @@ class EntityInjection(OOBDocFeature):
 
     def TEST(self):
         return [
-            doc("{}/entity/test".format(self.server.location)).add_path("/data") == http.OOBHttpRequestHandler.TEST_RESPONSE
+            doc("{}/entity/test".format(self.server.location)).add_path("/data") == http.TEST_RESPONSE
         ]
 
     def get_file(self, requester, file_path, use_comment=False):
