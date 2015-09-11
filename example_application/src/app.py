@@ -69,7 +69,7 @@ def run_xpath2_query(query):
     """
 
     library_arg = "-s:{library} ".format(library=library)
-    args = ["java", "-Xms30m", "-cp", str(saxon_jar), "net.sf.saxon.Query", library_arg, "-", "-wrap", "-ext:off"]
+    args = ["java", "-Xms50m", "-cp", str(saxon_jar), "net.sf.saxon.Query", library_arg, "-", "-wrap", "-ext:off"]
 
     start = time.time()
     p = run(args, stdout=Capture(), stderr=Capture(), cwd=os.getcwd(), input=query)
@@ -96,4 +96,4 @@ def parse_item(result):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="localhost")
+    app.run(debug=True, host="localhost", threaded=True)

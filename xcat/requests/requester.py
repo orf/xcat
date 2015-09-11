@@ -31,6 +31,8 @@ class RequestMaker(object):
                 raise RuntimeError("Unknown parameter {0}".format(target_parameter))
 
             self.set_target_parameter(target_parameter)
+        else:
+            pass
 
         self.features = features or {}
         self.requests_sent = 0

@@ -22,7 +22,7 @@ Options:
     -t, --true                  Indicates match_string is a True response.
     -f, --false                 Indicates match_string is a False response.
     -d. --debug                 Debug requests and responses.
-    -i, --ip=<ip>               Public IP to use with OOB connects [default: autodetect].
+    -i, --ip=<ip>               Public IP to use with OOB connects (or none to disable) [default: autodetect].
     -p, --port=<port>           Port to use for OOB connections [default: 80]
     -l, --limit=<limit>         Max number of concurrent connections to the target [default: 20].
     -x, --xversion=<ver>        XCat version to use [default: auto].
@@ -120,7 +120,9 @@ def run():
 
         logger.debug("Public IP: %s", listen_ip)
 
-    OOBDocFeature.server = OOBHttpServer(host=listen_ip, port=listen_port)
+    if listen_ip != "none":
+        OOBDocFeature.server = OOBHttpServer(host=listen_ip, port=listen_port)
+
     request_maker = RequestMaker(url, method, target_parameter if target_parameter != "*" else None,
                                  checker=checker, limit_request=limit, cookies=cookies)
     feature_detector = detector.Detector(checker, request_maker)
@@ -128,6 +130,9 @@ def run():
     if command == "test":
         commands.test(feature_detector, target_parameter, unstable, sys.stdout, use_or=use_or)
         sys.exit(0)
+    elif target_parameter == "*":
+        logger.error("Target parameter is * but tests are not being run")
+        sys.exit(1)
 
     injectors = run_then_return(get_injectors(feature_detector, unstable=unstable,
                                               with_features=False, use_or=use_or))
@@ -144,7 +149,7 @@ def run():
     if xversion in {"auto", "2"} and XPath2 in features:
         executor_cls = XPath2Executor
 
-    if OOBDocFeature in features:
+    if OOBDocFeature in features and listen_ip != "none":
         executor_cls = DocFunctionExecutor
 
     requester = feature_detector.get_requester(injector, features=features)
