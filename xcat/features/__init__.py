@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from ..xpath import Expression
 
@@ -6,6 +7,9 @@ from ..xpath import Expression
 class BaseFeature(object):
     NAME = None
     TEST = None
+
+    def __init__(self):
+        self.logger = logging.getLogger("xcat.features." + self.__class__.__name__)
 
     @asyncio.coroutine
     def execute(self, requester, expression):
@@ -22,10 +26,15 @@ class BaseFeature(object):
         else:
             raise RuntimeError("TEST must be set to an xpath Expression, a list of Expressions or a callable")
 
+        self.logger.info("Testing feature %s with %s test cases", self.__class__.__name__, len(tests))
+
         for t in tests:
+            self.logger.debug("Testing case %s", t)
+
             result = yield from requester.send_payload(
                 payload=t
             )
+            self.logger.debug("Case result %s", result)
             if not result:
                 return False
 

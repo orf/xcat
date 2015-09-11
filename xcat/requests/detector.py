@@ -42,7 +42,7 @@ class Detector(object):
         return x
 
     @asyncio.coroutine
-    def detect_injectors(self, unstable=False):
+    def detect_injectors(self, unstable=False, use_or=False):
         """
         Work out how to send a request
         """
@@ -54,7 +54,7 @@ class Detector(object):
                     AttributeNameInjection,
                     ElementNameInjection,
                     FunctionCallInjection):
-            inst = cls(self)
+            inst = cls(self, use_or=use_or)
             if (yield from inst.test(unstable)):
                 injectors.append(inst)
 

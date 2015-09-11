@@ -5,7 +5,7 @@ Usage:
     xcat [--match-method=<method>] [--method=<method>]
          [--true|--false] [--debug] [--ip=<ip> --port=<port>]
          [--limit=<limit>] [--xversion=<ver>] [--unstable]
-         [--body=<body>] [--cookies=<cookies>]
+         [--body=<body>] [--cookies=<cookies>] [--use-or]
          <command> <url> <parameter> <match>
 
 Where command is one of the following:
@@ -29,6 +29,7 @@ Options:
     -b, --body=<body>           A string that will be sent with the request body.
     -c, --cookies=<cookies>     A string with all cookies to be sent, or a file containing all cookie data.
     -u, --unstable              Ensure responses are stable before executing
+    -o, --use-or                Use OR payloads rather than AND.
 """
 
 import logging
@@ -69,6 +70,8 @@ def run():
     unstable = arguments["--unstable"]
     xversion = arguments["--xversion"]
     match_method = arguments["--match-method"]
+    cookies = arguments["--cookies"]
+    use_or = arguments["--use-or"]
 
     if match_method is None:
         match_method = "string"
@@ -119,15 +122,15 @@ def run():
 
     OOBDocFeature.server = OOBHttpServer(host=listen_ip, port=listen_port)
     request_maker = RequestMaker(url, method, target_parameter if target_parameter != "*" else None,
-                                 checker=checker, limit_request=limit)
+                                 checker=checker, limit_request=limit, cookies=cookies)
     feature_detector = detector.Detector(checker, request_maker)
 
     if command == "test":
-        commands.test(feature_detector, target_parameter, unstable, sys.stdout)
+        commands.test(feature_detector, target_parameter, unstable, sys.stdout, use_or=use_or)
         sys.exit(0)
 
     injectors = run_then_return(get_injectors(feature_detector, unstable=unstable,
-                                              with_features=False))
+                                              with_features=False, use_or=use_or))
 
     injector = list(injectors.keys())[0]  # Hack: todo properly handle >1 injector
     features = run_then_return(feature_detector.detect_features(injector))

@@ -21,7 +21,6 @@ class XPath1Executor(BaseExecutor):
 
     @asyncio.coroutine
     def get_string(self, expression):
-        returner = []
         string_count = yield from self.string_length(expression)
 
         if (yield from self.is_empty_string(expression)):
@@ -59,12 +58,10 @@ class XPath1Executor(BaseExecutor):
 
     @asyncio.coroutine
     def get_attributes(self, node, count):
-        attributes = {}
-
         def get_attributes_task(self, attribute):
             attr_name = yield from self.get_string(attribute.name)
             attr_text = yield from self.get_string(attribute)
-            return (attr_name, attr_text)
+            return attr_name, attr_text
 
         futures = map(asyncio.Task, (get_attributes_task(self, attribute) for attribute in node.attributes(count)))
         results = (yield from asyncio.gather(*futures))

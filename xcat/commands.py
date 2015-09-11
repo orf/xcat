@@ -30,7 +30,7 @@ def get_uri(executor, out):
     out.write("URI: {uri}\n".format(uri=uri))
 
 
-def test(detector, target_parameter, unstable, out):
+def test(detector, target_parameter, unstable, out, use_or=False):
     if target_parameter == "*":
         params = detector.requests.get_url_parameters()
     else:
@@ -41,7 +41,7 @@ def test(detector, target_parameter, unstable, out):
         detector.change_parameter(param)
 
         injectors = run_then_return(get_injectors(
-            detector, with_features=True, unstable=unstable
+            detector, with_features=True, unstable=unstable, use_or=use_or
         ))
 
         if len(injectors) == 0:
@@ -252,8 +252,8 @@ def run_then_return(generator):
 
 
 @asyncio.coroutine
-def get_injectors(detector, with_features=False, unstable=False):
-    injectors = yield from detector.detect_injectors(unstable)
+def get_injectors(detector, with_features=False, unstable=False, use_or=False):
+    injectors = yield from detector.detect_injectors(unstable, use_or)
     if not with_features:
         return {i: [] for i in injectors}
     # Doesn't work it seems. Shame :(

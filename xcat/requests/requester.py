@@ -12,17 +12,24 @@ logger = logging.getLogger("xcat.requests")
 
 
 class RequestMaker(object):
-    def __init__(self, url, method, target_parameter, checker, limit_request=20, features=None, injector=None):
+    def __init__(self, url, method, target_parameter, checker, limit_request=20, features=None, injector=None,
+                 cookies=None):
         self.method = method
         self.original_url = url
+        self.cookies = cookies
+
         parsed = parse.urlparse(url)
 
         self.url = "{scheme}://{netloc}{path}".format(scheme=parsed.scheme, netloc=parsed.netloc, path=parsed.path)
 
         qs = parse.urlparse(url).query
-        self.working_data = parse.parse_qs(qs)
+        self.working_data = parse.parse_qs(qs, keep_blank_values=True)
 
         if target_parameter:
+            if target_parameter not in self.working_data:
+                logger.error("Parameter %s cannot be found in the given data", target_parameter)
+                raise RuntimeError("Unknown parameter {0}".format(target_parameter))
+
             self.set_target_parameter(target_parameter)
 
         self.features = features or {}
@@ -55,7 +62,7 @@ class RequestMaker(object):
 
     def with_injector(self, injector):
         return RequestMaker(self.original_url, self.method, self.target_parameter, self.checker,
-                            self.limit_request, self.features, injector)
+                            self.limit_request, self.features, injector, self.cookies)
 
     def get_query_data(self, new_target_data):
         new_dict = copy.deepcopy(self.working_data)
@@ -80,17 +87,21 @@ class RequestMaker(object):
             else:
                 url = self.url
 
-            response = yield from aiohttp.request(self.method, url, data=data)
+            headers = {}
+            if self.cookies:
+                headers["Cookie"] = self.cookies
+
+            response = yield from aiohttp.request(self.method, url, data=data, headers=headers)
             body = (yield from response.read_and_close()).decode("utf-8")
             return response, body
 
     def send_request(self, payload):
-        logger.debug("Sending payload %s", payload)
         response, body = yield from self.send_raw_request(payload)
         self.requests_sent += 1
         return self.checker(response, body)
 
     def send_payload(self, payload):
+        logger.debug("Sending payload %s", payload)
         query_data = self.get_query_data(self.injector.get_payload(payload))
         return (yield from self.send_request(query_data))
 
