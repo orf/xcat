@@ -16,7 +16,7 @@ def make_matchmaker(match_input, match_method, is_true):
     elif match_method == "py":
         raise NotImplementedError("ToDo :)")
     else:
-        raise RuntimeError("Unknown match input: {input}".format(input=match_input))
+        raise RuntimeError("Unknown match input: {input}".format(input=match_method))
 
     if not is_true:
         _old_checker = checker

@@ -70,6 +70,9 @@ def run():
     xversion = arguments["--xversion"]
     match_method = arguments["--match-method"]
 
+    if match_method is None:
+        match_method = "string"
+
     allowed_commands = {"get", "test", "uri", "file-shell", "console", "structure"}
     if command not in allowed_commands:
         logger.error("Unknown command {cmd}. Allowed: {allowed}".format(

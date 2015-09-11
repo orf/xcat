@@ -64,7 +64,7 @@ class Detector(object):
         """
         See if this data is stable (requests return the same code) n times
         """
-        logger.info("Testing if URL is stable with {0} requests, expecting {1} response", request_count, expected_result)
+        logger.info("Testing if URL is stable with %s requests, expecting %s response", request_count, expected_result)
 
         gathered_results = yield from asyncio.wait([self.requests.send_request(data) for _ in range(request_count)])
         results = [r.result() == expected_result for r in gathered_results[0]]

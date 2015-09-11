@@ -39,6 +39,8 @@ class Injection(object):
         self.logger = logging.getLogger("xcat.injectors." + self.__class__.__name__)
         self.kind = None
 
+        self.working_requests = []
+
     def test(self, unstable=False):
         payloads = self.create_test_payloads()
         if isinstance(payloads, tuple):
@@ -59,7 +61,9 @@ class Injection(object):
                     logger.info("Payload %s is not stable", payload)
                     break
                 else:
-                    pass
+                    self.working_requests.append(
+                        (expected_result, payload)
+                    )
             else:
                 logger.info("All payloads are stable, by Jove Watson I think I've got it.")
                 self.kind = kind
@@ -114,7 +118,7 @@ class StringInjection(Injection):
         return E(self.working_value + self.kind) & expression & L("'1'='1".replace("'", self.kind))
 
     def get_example(self):
-        return "/lib/book[name={}?{}".format(self.kind, self.kind)
+        return "/lib/book[name={}?{}]".format(self.kind, self.kind)
 
 
 class AttributeNameInjection(Injection):

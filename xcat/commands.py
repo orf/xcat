@@ -52,6 +52,11 @@ def test(detector, target_parameter, unstable, out):
             for feature in features:
                 out.write("\t\t-{name}\n".format(name=feature.__name__))
             out.write("\n")
+            out.write("\tExample payloads:\n")
+            for response_type, data in injector.working_requests:
+                out.write("\t{type}:\t {data}\n".format(type=response_type, data=data))
+
+            out.write("\n")
 
 
 def console(executor):

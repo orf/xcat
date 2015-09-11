@@ -65,7 +65,7 @@ class RequestMaker(object):
     def send_raw_request(self, data):
         # Limit the number of concurrent request
         with (yield from self.semaphore):
-            logger.debug("Sending request with data {}", data)
+            logger.debug("Sending request with data %s", data)
             self.request_count += 1
 
             if isinstance(data, dict):
