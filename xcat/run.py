@@ -93,6 +93,10 @@ def run():
     if not arguments["--true"] and not arguments["--false"]:
         arguments["--true"] = True
 
+    # We need a convenient way of checking if a response is true or false.
+    # We support a few different ways to do this, such as the http status code or
+    # a matched string in the response. `make_matchmaker` takes some options and
+    # returns a function that does these checks.
     checker = matchmaker.make_matchmaker(match_string, match_method, is_true=arguments["--true"])
 
     try:

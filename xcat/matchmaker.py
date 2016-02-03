@@ -12,7 +12,7 @@ def make_matchmaker(match_input, match_method, is_true):
             raise RuntimeError("Match method is status code but match input is not an integer")
 
         def checker(response, body):
-            return response.status_code == code
+            return response.status == code
     elif match_method == "py":
         raise NotImplementedError("ToDo :)")
     else:
