@@ -76,7 +76,7 @@ class RequestMaker(object):
                url = self.url
 
             response = yield from aiohttp.request(self.method, url,  data=data)
-            body = (yield from response.read_and_close()).decode("utf-8")
+            body = (yield from response.text())
             return response, body
 
     def send_request(self, payload):
