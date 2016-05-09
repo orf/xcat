@@ -4,7 +4,7 @@ import logging
 from . import BaseFeature
 from ..xpath import doc, concat, encode_for_uri
 from ..oob import http
-
+import warnings
 
 logger = logging.getLogger("xcat.oob")
 
@@ -26,7 +26,8 @@ class OOBDocFeature(BaseFeature):
     def is_available(self, requester):
         try:
             yield from self.server.start()
-        except Exception:
+        except Exception as e:
+            warnings.warn("Cannot start listen server for OOB connections: {0}".format(e))
             return False
         r = yield from super().is_available(requester)
         if r:

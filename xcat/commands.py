@@ -186,11 +186,15 @@ def file_shell(requester, executor):
 
     # ToDo: Make doc injection verify that the files exist
     commands = {
-        "doc": lambda p: run_then_return(display_results(XMLOutput(), executor, doc(p).add_path("/*[1]"))),
-        "inject": lambda p: print(run_then_return(entity_injection.get_file(requester, file_path))),
-        "comment": lambda p: print(
-            run_then_return(entity_injection.get_file(requester, file_path, True))),
+        "doc": lambda p: run_then_return(display_results(XMLOutput(), executor, doc(p).add_path("/*[1]")))
     }
+
+    if entity_injection:
+        commands.update({
+            "inject": lambda p: print(run_then_return(entity_injection.get_file(requester, file_path))),
+            "comment": lambda p: print(run_then_return(entity_injection.get_file(requester, file_path, True))),
+        })
+
     numbers = {
         "1": "inject",
         "2": "comment",

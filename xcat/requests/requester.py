@@ -93,12 +93,17 @@ class RequestMaker(object):
             if self.cookies:
                 headers["Cookie"] = self.cookies
 
-            response = yield from aiohttp.ClientSession().request(self.method, url, data=data, headers=headers)
-            body = (yield from response.text())
-            return response, body
+            with aiohttp.ClientSession() as sesh:
+                response = yield from sesh.request(self.method, url, data=data, headers=headers)
+                body = yield from response.text()
+                return response, body
 
     def send_request(self, payload):
-        response, body = yield from self.send_raw_request(payload)
+        try:
+            response, body = yield from self.send_raw_request(payload)
+        except Exception:
+            return None
+
         self.requests_sent += 1
         return self.checker(response, body)
 

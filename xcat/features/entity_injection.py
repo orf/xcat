@@ -38,6 +38,7 @@ class EntityInjection(OOBDocFeature):
         except asyncio.TimeoutError:
             #logger.error("5 second timeout expired waiting for doc() postback.")
             return None
+
         if not "d" in result:
             return None
 

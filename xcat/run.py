@@ -173,6 +173,9 @@ def run():
         logger.error("Unknown command {command}".format(command=command))
         sys.exit(1)
 
+    if OOBDocFeature.server:
+        OOBDocFeature.server.stop()
+
     logger.debug("Made %s requests", requester.request_count)
 
 
