@@ -17,23 +17,23 @@ def test_handler(server, request):
 def entity_handler(server, request):
     file_id = request.match_info["id"]
 
-    use_comment = False
+    entities = []
+    data_value = "&goodies;"
 
     if file_id == "test":
-        entity_value = '"{}"'.format(TEST_RESPONSE)
-
+        entities.append('<!ENTITY goodies "{}">'.format(TEST_RESPONSE))
     elif server.expecting_identifier(file_id):
-        use_comment, value = server.get_entity_value(file_id)
-        entity_value = 'SYSTEM "{}"'.format(value)
+        value = server.get_entity_value(file_id)
+        entities.append('<!ENTITY goodies SYSTEM "{}">'.format(value))
     else:
         return web.Response(status=404)
 
-    data_value = "&c;"
-    if use_comment:
-        data_value = "<!-- {} -->".format(data_value)
+    content = "<data>{}</data>".format(data_value)
+
+    resp = "<!DOCTYPE stuff [<!ELEMENT data ANY>{}]> {}".format(" ".join(entities), content)
 
     return web.Response(
-        text="<!DOCTYPE stuff [<!ELEMENT data ANY><!ENTITY c {}>]> <data>{}</data>".format(entity_value, data_value),
+        text=resp,
         content_type="text/xml"
     )
 
@@ -70,26 +70,20 @@ class OOBHttpServer(object):
         self.app.router.add_route("GET", "/entity/{id}", partial(entity_handler, self))
         self.app.router.add_route("GET", "/{id}", partial(data_handler, self))
 
-    def create_handler(self, *args, **kwargs):
-        h = OOBHttpRequestHandler(keep_alive=75)
-        h.server = self
-        return h
-
     def expecting_identifier(self, identifier):
         return identifier in self.expectations
 
     def get_entity_value(self, id):
         return self.serve_files[id]
 
-    def expect_entity_injection(self, entity_value, use_comment=False):
+    def expect_entity_injection(self, entity_value):
         """
         Expect a HTTP request and serve crafted XML entity
         :param entity_value: the value of the entity. Normally a file path
-        :param use_comment: If True the entity will be inside a comment
         :return: a tuple of an ID and a future
         """
         tick, future = self.expect_data()
-        self.serve_files[tick] = (use_comment, entity_value)
+        self.serve_files[tick] = entity_value
         return tick, future
 
     def expect_data(self):

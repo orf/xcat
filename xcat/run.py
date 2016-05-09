@@ -141,6 +141,10 @@ def run():
     injectors = run_then_return(get_injectors(feature_detector, unstable=unstable,
                                               with_features=False, use_or=use_or))
 
+    if not injectors:
+        logger.error("Could not find a suitable injection point!")
+        sys.exit(1)
+
     injector = list(injectors.keys())[0]  # Hack: todo properly handle >1 injector
     features = run_then_return(feature_detector.detect_features(injector))
 

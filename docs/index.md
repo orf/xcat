@@ -120,9 +120,8 @@ works if the vulnerable parameter supports the doc feature (and optionally entit
     Detecting features...
     Supported features: XPath 2, String to codepoints, External DOC function, Entity injection, Substring search speedup
     There are three ways to read files on the file system using XPath:
-     1. inject: Can read arbitrary text files as long as they do not contain any XML
-     2. comment: Can read arbitrary text files containing XML snippets, but cannot contain '-->'
-     3. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.
+     1. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.
+     2. inject: Can read arbitrary text files as long as they do not contain any XML
     Type doc, inject or comment to switch modes. Defaults to inject
     Type uri to read the URI of the document being queried
     Note: The URI should have a protocol, e.g: file:///test.xml. Bad things may happen if the URI does not exist, and it is best to use absolute paths.

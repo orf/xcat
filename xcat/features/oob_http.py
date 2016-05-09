@@ -29,6 +29,7 @@ class OOBDocFeature(BaseFeature):
         except Exception as e:
             warnings.warn("Cannot start listen server for OOB connections: {0}".format(e))
             return False
+
         r = yield from super().is_available(requester)
         if r:
             self.working_port = self.server.port

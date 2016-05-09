@@ -171,13 +171,12 @@ def file_shell(requester, executor):
 
     # ToDo: Make this more like a shell, with a current directory etc. Make it more usable :)
     print("There are three ways to read files on the file system using XPath:")
-    print(" 1. inject: Can read arbitrary text files as long as they do not contain any XML")
-    print(" 2. comment: Can read arbitrary text files containing XML snippets, but cannot contain '-->'")
-    print(" 3. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.")
-    print("Type doc, inject or comment to switch modes. Defaults to inject")
+    print(" 1. doc: Reads valid XML files - does not support any other file type. Supports remote file URI's (http) and local ones.")
+    print(" 2. inject: Can read arbitrary text files as long as they do not contain any XML")
+    print("Type doc or inject to switch modes. Defaults to inject")
     print("Type uri to read the URI of the document being queried")
-    print("Note: The URI should have a protocol prefix. Bad things may happen if the URI does not exist, and it is best to use absolute paths.")
-    print("When using the example application use 'file:' as a prefix, not 'file://'.")
+    print("Note: The URI should have a protocol prefix. Strange things may happen if the URI does not exist, and it is best to use absolute paths.")
+    print("URIs like 'file:secret.txt use relative paths, URIs like 'file://secret.txt' use absolute paths. This may vary, try different combinations.")
 
     if requester.has_feature(EntityInjection):
         entity_injection = requester.get_feature(EntityInjection)
@@ -191,16 +190,14 @@ def file_shell(requester, executor):
 
     if entity_injection:
         commands.update({
-            "inject": lambda p: print(run_then_return(entity_injection.get_file(requester, file_path))),
-            "comment": lambda p: print(run_then_return(entity_injection.get_file(requester, file_path, True))),
+            "inject": lambda p: print(run_then_return(entity_injection.get_file(requester, file_path)))
         })
 
     numbers = {
-        "1": "inject",
-        "2": "comment",
-        "3": "doc"
+        "1": "doc",
+        "2": "inject"
     }
-    mode = "inject"
+    mode = "doc"
 
     while True:
         file_path = input(">> ")
