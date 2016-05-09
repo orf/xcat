@@ -93,8 +93,8 @@ class RequestMaker(object):
             if self.cookies:
                 headers["Cookie"] = self.cookies
 
-            response = yield from aiohttp.request(self.method, url, data=data, headers=headers)
-            body = (yield from response.read_and_close()).decode("utf-8")
+            response = yield from aiohttp.ClientSession().request(self.method, url, data=data, headers=headers)
+            body = (yield from response.text())
             return response, body
 
     def send_request(self, payload):
