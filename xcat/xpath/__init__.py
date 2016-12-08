@@ -1,7 +1,51 @@
 from functools import singledispatch
 
 
-class ExpressionSugar(object):
+class Expression:
+    __slots__ = ('string',)
+
+    def __init__(self, string=""):
+        self.string = string
+
+    def __repr__(self):
+        return "<Expression: %s>" % self.string
+
+    @property
+    def text(self):
+        return IterableExpression(self.string + "/text()")
+
+    @property
+    def any_node(self):
+        return Expression(self.string + "/node()")
+
+    def add_path(self, path):
+        return Expression(self.string + path)
+
+    @property
+    def count(self):
+        from .xpath_1 import count
+        return count(self)
+
+    @property
+    def name(self):
+        from .xpath_1 import name
+        return name(self)
+
+    def value(self):
+        return self.string
+
+    @property
+    def attributes(self):
+        return AttributesExpression("%s/@*" % self.string)
+
+    @property
+    def comments(self):
+        return CommentsExpression(self.string + "/comment()")
+
+    @property
+    def children(self):
+        return IterableExpression("%s/*" % self.string)
+
     def expr(self, symbol, value):
         return Expression("%s%s%s" % (self.value(), symbol, arg_to_representation(value)))
 
@@ -44,56 +88,11 @@ class ExpressionSugar(object):
     def __or__(self, other):
         return self.expr(" or ", other)
 
-    def value(self):
-        raise NotImplementedError()
-
     def __unicode__(self):
         return "%s" % self.value()
 
     def __str__(self):
         return "%s" % self.value()
-
-
-class Expression(ExpressionSugar):
-    def __init__(self, string=""):
-        self.string = string
-
-    def __repr__(self):
-        return "<Expression: %s>" % self.string
-
-    @property
-    def text(self):
-        return IterableExpression(self.string + "/text()")
-
-    @property
-    def any_node(self):
-        return Expression(self.string + "/node()")
-
-    def add_path(self, path):
-        return Expression(self.string + path)
-
-    @property
-    def count(self):
-        return count(self)
-
-    @property
-    def name(self):
-        return name(self)
-
-    def value(self):
-        return self.string
-
-    @property
-    def attributes(self):
-        return AttributesExpression("%s/@*" % self.string)
-
-    @property
-    def comments(self):
-        return CommentsExpression(self.string + "/comment()")
-
-    @property
-    def children(self):
-        return IterableExpression("%s/*" % self.string)
 
 
 class Node(Expression):
@@ -123,6 +122,8 @@ class Attribute(Expression):
 
 
 class Function(Expression):
+    __slots__ = ('string', 'min_args', 'max_args', 'args_count', 'args')
+
     def __init__(self, name, *args, args_count=-1, min_args=-1, max_args=-1):
         super().__init__(name)
         self.min_args = min_args
@@ -169,10 +170,10 @@ def arg_to_representation(other):
 
 @arg_to_representation.register(str)
 def _(other):
-    if not "'" in str(other):
+    if "'" not in str(other):
         return "'%s'" % other
 
-    if not '"' in str(other):
+    if '"' not in str(other):
         return '"%s"' % other
 
     safe_concat = ",".join(arg_to_representation(c) for c in str(other))
@@ -197,30 +198,4 @@ L = Literal
 F = Function
 N = Node
 
-position = Function("position")
-count = Function("count")
-
-translate = Function("translate", args_count=3)
-string = Function("string")
-concat = Function("concat")
-starts_with = Function("starts-with")
-contains = Function("contains")
-substring = Function("substring", args_count=3)
-substring_before = Function("substring-before", args_count=2)
-substring_after = Function("substring-after", args_count=2)
-string_length = Function("string-length")
-normalize_space = Function("normalize-space")
-_not = Function("not")
-_true = Function("true")
-_false = Function("false")
-_sum = Function("sum")
-name = Function("name", args_count=1)
-
-# XPath 2.0 functions
-lower_case = Function("lower-case")
-string_to_codepoints = Function("string-to-codepoints", args_count=1)
-normalize_unicode = Function("normalize-unicode", args_count=1)
-document_uri = Function("document-uri", args_count=1)
-doc = Function("doc", args_count=1)
-encode_for_uri = Function("encode-for-uri", args_count=1)
-processing_instruction = Function('processing-instruction')
+ROOT_NODE = E('/*[1]')

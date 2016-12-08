@@ -22,9 +22,6 @@ class Output(abc.ABC):
     def output_finished(self):
         return  # Optional
 
-    def flush(self):
-        self.output.flush()
-
 
 class XMLGeneratorWithComments(XMLGenerator):
     def __init__(self, *args, **kwargs):

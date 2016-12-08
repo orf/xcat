@@ -7,7 +7,7 @@ if os.path.exists("README.rst"):
         readme = f.read()
 
 setup(name="xcat",
-      version="0.8",
+      version="0.9",
       author="Tom Forbes",
       license="MIT",
       author_email="tom@tomforb.es",
@@ -16,7 +16,7 @@ setup(name="xcat",
       install_requires=["aiohttp", "docopt", 'colorama', 'ipgetter'],
       entry_points={
           'console_scripts': [
-              'xcat = xcat.run:run'
+              'xcat = xcat.cli:run'
           ]
       },
       description="A command line tool to automate the exploitation of blind XPath injection vulnerabilities",
@@ -24,8 +24,6 @@ setup(name="xcat",
       url="https://github.com/orf/xcat",
       classifiers=[
           'Programming Language :: Python :: 3',
-          'Programming Language :: Python :: 3.4',
-          'Programming Language :: Python :: 3.3',
-          'Programming Language :: Python :: 3.2',
+          'Programming Language :: Python :: 3.6',
           'License :: OSI Approved :: MIT License',
       ])
