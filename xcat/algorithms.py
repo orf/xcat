@@ -30,15 +30,26 @@ async def get_string(requester: Requester, expression):
 
     string_length = await count(requester, expression, func=xpath_1.string_length)
 
+    if string_length <= 10:
+        # Try common strings we've got before
+        for common_name, _ in requester.counters['common-names'].most_common(5):
+            if await requester.check(expression == common_name):
+                return common_name
+
     chars = [
         await get_char(requester, xpath_1.substring(expression, i, 1))
         for i in range(1, string_length + 1)
         ]
 
-    return "".join(
+    result = "".join(
         char if char is not None else MISSING_CHARACTER
         for char in chars
     )
+
+    if len(result) <= 10:
+        requester.counters['common-names'][result] += 1
+
+    return result
 
 async def get_node_text(requester: Requester, expression):
     text_node_count = await count(requester, expression.text)
