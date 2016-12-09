@@ -2,8 +2,9 @@
 XCat.
 
 Usage:
-    xcat (--true-string=<string> | --true-code=<code>) [--method=<method>]
+    xcat (--true-string=<string> | --true-code=<code>) [--method=<method>] [--oob-ip=<ip> (--oob-port=<port>)]
          <url> <target_parameter> [<parameters>]...
+    xcat detectip
 
 """
 
@@ -11,6 +12,7 @@ import docopt
 import asyncio
 import aiohttp
 import operator
+import ipgetter
 from xcat.requester import Requester
 from xcat.payloads import detect_payload
 from xcat.features import detect_features
@@ -21,17 +23,31 @@ from xcat.display import display_xml
 
 def run():
     arguments = docopt.docopt(__doc__)
+
+    if arguments['detectip']:
+        print('Finding external IP address...')
+        ip = ipgetter.myip()
+
+        if ip:
+            print(f'External IP: {ip}')
+        else:
+            print('Could not find external IP!')
+        return
+
     match_function = make_match_function(arguments)
 
     url = arguments['<url>']
     target_parameter = arguments['<target_parameter>']
     parameters = arguments['<parameters>']
+    print(arguments)
+    oob_ip = arguments["--oob-ip"]
+    oop_port = arguments["--oob-port"]
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_action(url, target_parameter, parameters, match_function))
+    loop.run_until_complete(start_action(url, target_parameter, parameters, match_function, oob_ip, oop_port))
 
 
-async def start_action(url, target_parameter, parameters, match_function):
+async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port):
     async with aiohttp.ClientSession() as session:
         payload_requester = Requester(url, target_parameter, parameters, match_function, session)
 
@@ -53,7 +69,8 @@ async def start_action(url, target_parameter, parameters, match_function):
             chosen_payload = payloads[0]
 
         requester = Requester(url, target_parameter, parameters, match_function, session,
-                              injector=chosen_payload.payload_generator)
+                              injector=chosen_payload.payload_generator,
+                              external_ip=oob_ip, external_port=oob_port)
 
         print("Detecting Features...")
         features = await detect_features(requester)

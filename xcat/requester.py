@@ -4,6 +4,8 @@ from collections import defaultdict, Counter
 import aiohttp
 from urllib.parse import quote
 
+from xcat.oob import OOBHttpServer
+
 
 def process_parameters(params: List[str]) -> Dict[str, str]:
     returner = {}
@@ -19,7 +21,8 @@ class Requester:
     def __init__(self, url: str, target_parameter: str, parameters: List[str],
                  matcher: Callable[[aiohttp.Response, str], bool],
                  session: aiohttp.ClientSession, concurrency=10, method="get",
-                 injector: Callable[[str, str], str]=None):
+                 injector: Callable[[str, str], str]=None,
+                 external_ip=None, external_port=0):
         self.url = url
         self.parameters = process_parameters(parameters)
 
@@ -36,6 +39,28 @@ class Requester:
 
         self.counters = defaultdict(Counter)
         self.features = defaultdict(bool)
+
+        self.external_ip = external_ip
+        self.external_port = external_port
+        self._oob_server_lock = asyncio.Lock()
+        self._oob_server = None
+
+    async def get_oob_server(self):
+        if self.external_ip is None:
+            return None
+
+        async with self._oob_server_lock:
+            if self._oob_server:
+                return self._oob_server
+
+            server = OOBHttpServer(self.external_ip, self.external_port)
+            await server.start()
+            self._oob_server = server
+
+            return server
+
+    async def stop_oob_server(self):
+        await self._oob_server.stop()
 
     @property
     def target_parameter_value(self):

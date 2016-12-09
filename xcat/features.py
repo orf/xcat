@@ -6,9 +6,23 @@ from .algorithms import ASCII_SEARCH_SPACE
 from .requester import Requester
 from .xpath import E
 from .xpath.xpath_1 import string_length, substring_before, string, boolean
-from .xpath.xpath_2 import string_to_codepoints, lower_case, exists, document_uri, current_date_time, doc_available
+from .xpath.xpath_2 import string_to_codepoints, lower_case, exists, document_uri, current_date_time, doc_available, doc
 
 Feature = namedtuple('Feature', 'name tests')
+
+
+async def test_oob(requester: Requester):
+    server = await requester.get_oob_server()
+    if server is None:
+        return False
+
+    try:
+        return await requester.check(
+            doc(server.location + server.test_data_url).add_path('/data') == server.test_response_value
+        )
+    finally:
+        await server.stop()
+
 
 features = [
     Feature('xpath-2',
@@ -54,8 +68,8 @@ features = [
     Feature('linux',
             [
                 unparsed_text_available('/etc/passwd')
-            ])
-
+            ]),
+    Feature('oob-http', test_oob)
 ]
 
 
@@ -63,7 +77,10 @@ async def detect_features(requester: Requester) -> List[Feature]:
     returner = []
 
     for feature in features:
-        checks = [await requester.check(test) for test in feature.tests]
+        if callable(feature.tests):
+            checks = [await feature.tests(requester)]
+        else:
+            checks = [await requester.check(test) for test in feature.tests]
         if all(checks):
             returner.append(feature)
 
