@@ -19,12 +19,11 @@ def test_oob(endpoint):
         if server is None:
             return False
 
-        try:
-            return await requester.check(
+        result = await requester.check(
                 doc(server.location + endpoint).add_path('/data') == server.test_response_value
             )
-        finally:
-            await server.stop()
+
+        return result
 
     return test_func
 

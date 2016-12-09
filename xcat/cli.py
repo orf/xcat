@@ -7,12 +7,15 @@ Usage:
     xcat detectip
 
 """
+import os
 
+import atexit
 import docopt
 import asyncio
 import aiohttp
 import operator
 import ipgetter
+import aioconsole
 
 from xcat.algorithms import iterate_all, count
 from xcat.requester import Requester
@@ -25,7 +28,7 @@ import shlex
 
 from xcat.xpath import E
 from xcat.xpath.xpath_2 import doc
-from xcat.xpath.xpath_3 import unparsed_text
+from xcat.xpath.xpath_3 import unparsed_text_lines
 
 
 def run():
@@ -93,11 +96,14 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
             print(f' - {feature.name} - {available}')
             requester.features[feature.name] = available
 
-        if shell:
-            await run_shell(requester)
-        else:
-            await display_xml([await actions.get_nodes(requester)])
-        print(f'Total Requests: {requester.request_count}')
+        try:
+            if shell:
+                await run_shell(requester)
+            else:
+                await display_xml([await actions.get_nodes(requester)])
+            print(f'Total Requests: {requester.request_count}')
+        finally:
+            await requester.stop_oob_server()
 
 
 def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
@@ -128,9 +134,25 @@ def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
 
 async def run_shell(requester: Requester):
     # This function is horrible and I feel bad :(
+
+    try:
+        import readline
+    except ImportError:
+        pass
+    else:
+        histfile = os.path.join(os.path.expanduser("~"), ".xcat_history")
+
+        try:
+            readline.read_history_file(histfile)
+        except FileNotFoundError:
+            pass
+
+        atexit.register(readline.write_history_file, histfile)
+
     print("XCat shell. Enter a command or 'help' for help. Funnily enough.")
     while True:
-        command = shlex.split(input(">> "))
+        cmd = await aioconsole.ainput('>> ')
+        command = shlex.split(cmd)
 
         if command[0] == "help":
             pass
@@ -152,10 +174,11 @@ async def run_shell(requester: Requester):
                 print("read_text 'text path'")
             else:
                 if requester.features['unparsed-text']:
-                    length = await count(requester, unparsed_text(command[1]))
+                    expression = unparsed_text_lines(command[1])
+                    length = await count(requester, expression)
                     print(f"Lines: {length}")
-                    async for line in iterate_all(requester, unparsed_text(command[1])):
-                        print(repr(line))
+                    async for line in iterate_all(requester, expression[1:length + 1]):
+                        print(line)
                 elif requester.features['oob-entity-injection']:
                     pass
 

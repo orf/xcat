@@ -63,7 +63,8 @@ class Requester:
             return server
 
     async def stop_oob_server(self):
-        await self._oob_server.stop()
+        if self._oob_server:
+            await self._oob_server.stop()
 
     @property
     def target_parameter_value(self):

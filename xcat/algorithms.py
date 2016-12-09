@@ -95,8 +95,8 @@ async def get_string_via_oob(requester: Requester, expression):
         return None
 
 
-async def iterate_all(requester: Requester, expression):
-    for text in expression:
+async def iterate_all(requester: Requester, expressions):
+    for text in expressions:
         yield await get_string(requester, text)
 
 

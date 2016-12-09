@@ -50,6 +50,12 @@ class Expression:
         return Expression("%s%s%s" % (self.value(), symbol, arg_to_representation(value)))
 
     def __getitem__(self, item):
+        if isinstance(item, slice):
+            return [
+                self[idx]
+                for idx in range(item.start or 1, item.stop, item.step or 1)
+            ]
+
         return Expression("%s[%s]" % (self.value(), item))
 
     def __eq__(self, other):
