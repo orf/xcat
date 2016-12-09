@@ -1,5 +1,7 @@
 import string
 
+from xcat.xpath.xpath_1 import string_length, substring_before
+from xcat.xpath.xpath_2 import string_to_codepoints
 from .requester import Requester
 from .xpath import xpath_1
 
@@ -12,8 +14,9 @@ async def count(requester: Requester, expression, func=xpath_1.count):
 
 
 async def get_char(requester: Requester, expression):
-    if requester.features['substring-search']:
-        from .features import substring_search
+    if requester.features['codepoint-search']:
+        return await codepoint_search(requester, expression)
+    elif requester.features['substring-search']:
         return await substring_search(requester, expression)
     else:
         # Dumb search
@@ -87,3 +90,36 @@ async def binary_search(requester: Requester, expression, min, max=25):
             min = midpoint + 1
         else:
             return midpoint
+
+
+async def substring_search(requester: Requester, expression):
+    # Small issue:
+    # string-length(substring-before('abc','z')) == 0
+    # string-length(substring-before('abc','a')) == 0
+    # So we need to explicitly check if the expression is equal to the first char in our search space.
+    # Not optimal, but still works out fairly efficient.
+
+    if await requester.check(expression == ASCII_SEARCH_SPACE[0]):
+        return ASCII_SEARCH_SPACE[0]
+
+    result = await binary_search(
+        requester,
+        string_length(substring_before(ASCII_SEARCH_SPACE, expression)),
+        min=0,
+        max=len(ASCII_SEARCH_SPACE))
+    if result == 0:
+        return None
+    else:
+        return ASCII_SEARCH_SPACE[result]
+
+
+async def codepoint_search(requester: Requester, expression):
+    result = await binary_search(
+        requester,
+        expression=string_to_codepoints(expression),
+        min=0,
+        max=255)
+    if result == 0:
+        return None
+    else:
+        return chr(result)

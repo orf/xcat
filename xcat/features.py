@@ -1,41 +1,58 @@
 from collections import namedtuple
 from typing import List
 
-from .algorithms import binary_search, ASCII_SEARCH_SPACE
+from xcat.xpath.xpath_3 import available_environment_variables, unparsed_text_available
+from .algorithms import ASCII_SEARCH_SPACE
 from .requester import Requester
-from .xpath.xpath_1 import string_length, substring_before
+from .xpath import F, E
+from .xpath.xpath_1 import string_length, substring_before, function_available, boolean, string
+from .xpath.xpath_2 import string_to_codepoints, lower_case, exists, document_uri, current_date_time, doc, doc_available
 
-Feature = namedtuple('Feature', 'name tests function')
-
-
-async def substring_search(requester: Requester, expression):
-    # Small issue:
-    # string-length(substring-before('abc','z')) == 0
-    # string-length(substring-before('abc','a')) == 0
-    # So we need to explicitly check if the expression is equal to the first char in our search space.
-    # Not optimal, but still works out fairly efficient.
-
-    if await requester.check(expression == ASCII_SEARCH_SPACE[0]):
-        return ASCII_SEARCH_SPACE[0]
-
-    result = await binary_search(
-        requester,
-        string_length(substring_before(ASCII_SEARCH_SPACE, expression)),
-        min=0,
-        max=len(ASCII_SEARCH_SPACE))
-    if result == 0:
-        return None
-    else:
-        return ASCII_SEARCH_SPACE[result]
+Feature = namedtuple('Feature', 'name tests')
 
 
 features = [
     Feature('substring-search',
             [
-                string_length(substring_before(ASCII_SEARCH_SPACE, 'h')) == 7,
-                string_length(substring_before(ASCII_SEARCH_SPACE, 'o')) == 14
-            ],
-            substring_search)
+                string_length(substring_before(ASCII_SEARCH_SPACE, 'h')) == ASCII_SEARCH_SPACE.find('h'),
+                string_length(substring_before(ASCII_SEARCH_SPACE, 'o')) == ASCII_SEARCH_SPACE.find('o')
+            ]),
+    Feature('codepoint-search',
+            [
+                string_to_codepoints("test")[1] == 116,
+                string_to_codepoints("test")[2] == 101,
+                string_to_codepoints("test")[3] == 115,
+                string_to_codepoints("test")[4] == 116,
+            ]),
+    Feature('xpath-2',
+            [
+                lower_case('A') == 'a'
+            ]),
+    Feature('environment-variables',
+            [
+                exists(available_environment_variables())
+            ]),
+    Feature('document-uri',
+            [
+                document_uri(E('/'))
+            ]),
+    Feature('current-datetime',
+            [
+                string(current_date_time())
+            ]),
+    Feature('unparsed-text',
+            [
+                unparsed_text_available(document_uri(E('/')))
+            ]),
+    Feature('doc-function',
+            [
+                doc_available(document_uri(E('/')))
+            ]),
+    Feature('linux',
+            [
+                unparsed_text_available('/etc/passwd')
+            ])
+
 ]
 
 

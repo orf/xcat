@@ -61,7 +61,7 @@ async def start_action(url, target_parameter, parameters, match_function):
         for feature in features:
             print(f' - {feature.name}')
             requester.features[feature.name] = True
-
+        return
         await display_xml([await actions.get_nodes(requester)])
 
 
