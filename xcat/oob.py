@@ -26,6 +26,9 @@ def _wrapper(func):
 
 
 class OOBHttpServer:
+    test_data_url = "/test/data"
+    test_entity_url = "/test/entity"
+
     def __init__(self, external_ip, port):
         self.port = port
         self.external_ip = external_ip
@@ -33,8 +36,6 @@ class OOBHttpServer:
         self.expectations: Dict[str, asyncio.Future] = {}
         self.entity_files = {}
 
-        self.test_data_url = "/test/data"
-        self.test_entity_url = "/test/entity"
         self.test_response_value = random.randint(1, 10_000_00)
 
         self._tick = 0
@@ -77,6 +78,7 @@ class OOBHttpServer:
         query = request.rel_url.query
         data = query.get('d', '')
         self.got_data(expect_id, data)
+        return f"<data>{self.test_response_value}</data>"
 
     def got_data(self, expect_id, data):
         self.expectations[expect_id].set_result(data)

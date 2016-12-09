@@ -22,7 +22,8 @@ class Requester:
                  matcher: Callable[[aiohttp.Response, str], bool],
                  session: aiohttp.ClientSession, concurrency=10, method="get",
                  injector: Callable[[str, str], str]=None,
-                 external_ip=None, external_port=0):
+                 external_ip=None, external_port=0,
+                 fast=False):
         self.url = url
         self.parameters = process_parameters(parameters)
 
@@ -39,6 +40,8 @@ class Requester:
 
         self.counters = defaultdict(Counter)
         self.features = defaultdict(bool)
+        self.fast = fast
+        self.request_count = 0
 
         self.external_ip = external_ip
         self.external_port = external_port
@@ -84,5 +87,5 @@ class Requester:
             params = self.payload_to_parameters(payload)
             response = await self.session.request(self.method, self.url, params=params)
             body = await response.text()
-
+            self.request_count += 1
             return self.matcher(response, body)

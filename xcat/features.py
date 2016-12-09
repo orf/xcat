@@ -1,27 +1,32 @@
 from collections import namedtuple
 from typing import List
 
+from xcat.oob import OOBHttpServer
 from xcat.xpath.xpath_3 import available_environment_variables, unparsed_text_available, generate_id
 from .algorithms import ASCII_SEARCH_SPACE
 from .requester import Requester
 from .xpath import E
-from .xpath.xpath_1 import string_length, substring_before, string, boolean
+from .xpath.xpath_1 import string_length, substring_before, string, boolean, normalize_space
 from .xpath.xpath_2 import string_to_codepoints, lower_case, exists, document_uri, current_date_time, doc_available, doc
 
 Feature = namedtuple('Feature', 'name tests')
 
 
-async def test_oob(requester: Requester):
-    server = await requester.get_oob_server()
-    if server is None:
-        return False
+def test_oob(endpoint):
 
-    try:
-        return await requester.check(
-            doc(server.location + server.test_data_url).add_path('/data') == server.test_response_value
-        )
-    finally:
-        await server.stop()
+    async def test_func(requester: Requester):
+        server = await requester.get_oob_server()
+        if server is None:
+            return False
+
+        try:
+            return await requester.check(
+                doc(server.location + endpoint).add_path('/data') == server.test_response_value
+            )
+        finally:
+            await server.stop()
+
+    return test_func
 
 
 features = [
@@ -32,6 +37,10 @@ features = [
     Feature('xpath-3',
             [
                 boolean(generate_id(E('/')))
+            ]),
+    Feature('normalize-space',
+            [
+                normalize_space('  a  b ') == 'a b'
             ]),
     Feature('substring-search',
             [
@@ -69,7 +78,8 @@ features = [
             [
                 unparsed_text_available('/etc/passwd')
             ]),
-    Feature('oob-http', test_oob)
+    Feature('oob-http', test_oob(OOBHttpServer.test_data_url)),
+    Feature('oob-entity-injection', test_oob(OOBHttpServer.test_entity_url))
 ]
 
 
@@ -81,7 +91,7 @@ async def detect_features(requester: Requester) -> List[Feature]:
             checks = [await feature.tests(requester)]
         else:
             checks = [await requester.check(test) for test in feature.tests]
-        if all(checks):
-            returner.append(feature)
+
+        returner.append((feature, all(checks)))
 
     return returner

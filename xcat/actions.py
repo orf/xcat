@@ -1,4 +1,4 @@
-from .algorithms import count, get_string, get_node_text, get_node_comments
+from .algorithms import count, get_string, get_all_text, get_node_comments
 from .display import XMLNode
 from .requester import Requester
 from .xpath import ROOT_NODE
@@ -8,7 +8,7 @@ async def get_nodes(requester: Requester, starting_path=ROOT_NODE):
     attributes = await get_node_attributes(requester, starting_path)
     child_node_count = await count(requester, starting_path.children)
 
-    text_content = await get_node_text(requester, starting_path)
+    text_content = await get_all_text(requester, starting_path)
     comments = await get_node_comments(requester, starting_path)
 
     node_name = await get_string(requester, starting_path.name)

