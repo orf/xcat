@@ -2,6 +2,8 @@ from collections import namedtuple
 from typing import List
 
 from xcat.oob import OOBHttpServer
+from xcat.xpath.fs import current_dir
+from xcat.xpath.saxon import evaluate
 from xcat.xpath.xpath_3 import available_environment_variables, unparsed_text_available, generate_id
 from .algorithms import ASCII_SEARCH_SPACE
 from .requester import Requester
@@ -13,7 +15,6 @@ Feature = namedtuple('Feature', 'name tests')
 
 
 def test_oob(endpoint):
-
     async def test_func(requester: Requester):
         server = await requester.get_oob_server()
         if server is None:
@@ -76,6 +77,14 @@ features = [
     Feature('linux',
             [
                 unparsed_text_available('/etc/passwd')
+            ]),
+    Feature('expath-file',
+            [
+                string_length(current_dir()) > 0
+            ]),
+    Feature('saxon',
+            [
+                evaluate('1+1') == 2
             ]),
     Feature('oob-http', test_oob(OOBHttpServer.test_data_url)),
     Feature('oob-entity-injection', test_oob(OOBHttpServer.test_entity_url))

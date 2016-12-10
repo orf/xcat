@@ -35,8 +35,8 @@ async def get_char(requester: Requester, expression):
                 return space
 
 
-async def get_string(requester: Requester, expression):
-    if requester.features['normalize-space']:
+async def get_string(requester: Requester, expression, disable_normalization=False):
+    if requester.features['normalize-space'] and not disable_normalization:
         expression = normalize_space(expression)
 
     if requester.features['oob-http']:
