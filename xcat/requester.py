@@ -22,7 +22,7 @@ def process_parameters(params: List[str]) -> Dict[str, str]:
 class Requester:
     def __init__(self, url: str, target_parameter: str, parameters: List[str],
                  matcher: Callable[[aiohttp.Response, str], bool],
-                 session: aiohttp.ClientSession, concurrency=10, method="get",
+                 session: aiohttp.ClientSession, concurrency=None, method="get",
                  injector: Callable[[str, str], str]=None,
                  external_ip=None, external_port=0,
                  fast=False):
@@ -35,7 +35,8 @@ class Requester:
 
         self.target_parameter = target_parameter
         self.matcher = matcher
-        self.semaphore = asyncio.BoundedSemaphore(value=concurrency)
+
+        self.semaphore = asyncio.BoundedSemaphore(value=concurrency or 10)
         self.session = session
         self.method = method
         self.injector = injector

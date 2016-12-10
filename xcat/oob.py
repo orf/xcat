@@ -3,6 +3,7 @@ import asyncio
 import random
 import functools
 from typing import Dict
+from urllib import parse
 
 ENTITY_INJECTION_TEMPLATE = "<!DOCTYPE stuff [<!ELEMENT data ANY> <!ENTITY goodies \"{0}\">]> <data>&goodies;</data>"
 
@@ -75,8 +76,8 @@ class OOBHttpServer:
         if not self.expecting_identifier(expect_id):
             return 404
 
-        query = request.rel_url.query
-        data = query.get('d', '')
+        data = parse.unquote(request.rel_url.query_string[2:])
+
         self.got_data(expect_id, data)
         return f"<data>{self.test_response_value}</data>"
 
