@@ -144,7 +144,8 @@ def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
 
 async def run_shell(requester: Requester):
     # This function is horrible and I feel bad :(
-    loop = asyncio.get_event_loop()
+    # The rest of the code is quite nice. I could refactor this into a much nicer
+    # implementation but I don't have time.
     try:
         import readline
     except ImportError:
