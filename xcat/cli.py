@@ -269,7 +269,7 @@ async def run_shell(requester: Requester):
                 for index in range(1, size+1, CHUNK_SIZE):
                     data = await get_string_via_oob(requester, substring(expression, index, CHUNK_SIZE))
                     if data is None:
-                        sys.stdout.write('!')
+                        sys.stdout.write('! (data may be corrupted) ')
                     else:
                         result += data
                         sys.stdout.write(".")
