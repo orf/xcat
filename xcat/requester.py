@@ -4,6 +4,8 @@ from collections import defaultdict, Counter
 import aiohttp
 from urllib.parse import quote
 
+import time
+
 from xcat.oob import OOBHttpServer
 
 
@@ -41,7 +43,7 @@ class Requester:
         self.counters = defaultdict(Counter)
         self.features = defaultdict(bool)
         self.fast = fast
-        self.request_count = 0
+        self.total_requests = 0
 
         self.external_ip = external_ip
         self.external_port = external_port
@@ -86,7 +88,14 @@ class Requester:
     async def check(self, payload) -> bool:
         async with self.semaphore:
             params = self.payload_to_parameters(payload)
+
+            start = time.time()
             response = await self.session.request(self.method, self.url, params=params)
             body = await response.text()
-            self.request_count += 1
+            request_time = time.time() - start
+
+            self.total_requests += 1
+
+            self.counters['response-status-codes'][response.status] += 1
+            self.counters['response-time'][round(request_time, -1)] += 1
             return self.matcher(response, body)

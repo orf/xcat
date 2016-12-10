@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import sys
 from collections import namedtuple
@@ -13,9 +14,10 @@ async def display_xml(nodes, display=None):
     for (node, children) in nodes:
         display.output_start_node(node)
 
-        for child in children:
-            res = await child
-            await display_xml([res], display)
+        results = await asyncio.gather(*children)
+
+        for result in results:
+            await display_xml([result], display)
 
         display.output_end_node(node)
 

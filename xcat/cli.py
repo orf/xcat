@@ -3,7 +3,7 @@ XCat.
 
 Usage:
     xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--shell] [--fast]
-         [--method=<method>] [--oob-ip=<ip> (--oob-port=<port>)]
+         [--method=<method>] [--oob-ip=<ip> (--oob-port=<port>)] [--stats]
     xcat detectip
 
 """
@@ -20,18 +20,19 @@ import pathlib
 
 import sys
 
-from xcat.algorithms import iterate_all, count, get_string_via_oob, get_string
+import time
+
+from xcat.algorithms import iterate_all, count, get_string_via_oob, get_string, get_nodes
 from xcat.requester import Requester
 from xcat.payloads import detect_payload
 from xcat.features import detect_features
-from xcat import actions
 from typing import Callable
 from xcat.display import display_xml
 import shlex
 import base64
 
 from xcat.xpath import E
-from xcat.xpath.fs import write_text, write_binary, append_binary, base_64_binary, delete
+from xcat.xpath.fs import write_text, append_binary, base_64_binary, delete
 from xcat.xpath.xpath_1 import concat, string
 from xcat.xpath.xpath_2 import doc, document_uri, current_date_time, doc_available, resolve_uri
 from xcat.xpath.xpath_3 import unparsed_text_lines, unparsed_text_available, unparsed_text, \
@@ -62,18 +63,19 @@ def run():
 
     shell = arguments['--shell']
     fast = arguments['--fast']
+    stats = arguments['--stats']
 
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(start_action(url, target_parameter,
                                              parameters, match_function,
                                              oob_ip, oop_port,
-                                             shell, fast))
+                                             shell, fast, stats))
     except KeyboardInterrupt:
         loop.stop()
 
 
-async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port, shell, fast):
+async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port, shell, fast, stats):
     async with aiohttp.ClientSession() as session:
         payload_requester = Requester(url, target_parameter, parameters, match_function, session)
 
@@ -110,10 +112,20 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
             if shell:
                 await run_shell(requester)
             else:
-                await display_xml([await actions.get_nodes(requester)])
-            print(f'Total Requests: {requester.request_count}')
+                t1 = time.time()
+                await display_xml([await get_nodes(requester)])
+                t2 = time.time()
+                print(f'Total Time: {round(t2-t1)} seconds')
+            print(f'Total Requests: {requester.total_requests}')
         finally:
             await requester.stop_oob_server()
+
+        if stats:
+            print('Stats:')
+            for name, counter in requester.counters.items():
+                print(f'{name}:')
+                for name, value in counter.most_common(10):
+                    print(f' - {name} {value}')
 
 
 def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
@@ -175,7 +187,7 @@ async def run_shell(requester: Requester):
             if len(command) != 2:
                 print("fetch 'xpath expression'")
             else:
-                await display_xml([await actions.get_nodes(requester, E(command[1]))])
+                await display_xml([await get_nodes(requester, E(command[1]))])
 
         if command[0] == 'pwd':
             if requester.features['document-uri']:
@@ -310,7 +322,7 @@ async def run_shell(requester: Requester):
             if len(command) != 2:
                 print("cat_xml 'path'")
             else:
-                await display_xml([await actions.get_nodes(requester, doc(command[1]).add_path('/*'))])
+                await display_xml([await get_nodes(requester, doc(command[1]).add_path('/*'))])
 
         if command[0] in {"cat", "ls"}:
             if len(command) != 2:

