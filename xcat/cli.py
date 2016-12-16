@@ -187,11 +187,17 @@ async def run_shell(requester: Requester):
         if command[0] == "help":
             pass
 
-        if command[0] == "fetch":
+        if command[0] == "get":
             if len(command) != 2:
-                print("fetch 'xpath expression'")
+                print("get 'xpath expression'")
             else:
                 await display_xml([await get_nodes(requester, E(command[1]))])
+
+        if command[0] == "get_string":
+            if len(command) != 2:
+                print("get_string 'xpath expression'")
+            else:
+                print(await get_string(requester, E(command[1])))
 
         if command[0] == 'pwd':
             if requester.features['document-uri']:
@@ -264,7 +270,7 @@ async def run_shell(requester: Requester):
                 size = await count(requester, expression, func=string_length)
                 print(f'Size: {size}')
 
-                CHUNK_SIZE = 1024
+                CHUNK_SIZE = 5 * 1024
                 result = ""
                 for index in range(1, size+1, CHUNK_SIZE):
                     data = await get_string_via_oob(requester, substring(expression, index, CHUNK_SIZE))
