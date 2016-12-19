@@ -62,7 +62,7 @@ class Requester:
             server = OOBHttpServer(self.external_ip, self.external_port)
             await server.start()
             self._oob_server = server
-
+            print(f'OOB Server running on: {server.location}')
             return server
 
     async def stop_oob_server(self):

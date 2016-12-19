@@ -11,6 +11,9 @@ async def display_xml(nodes, display=None):
     if display is None:
         display = XMLOutput()
 
+    if asyncio.iscoroutine(nodes):
+        nodes = [await nodes]
+
     for (node, children) in nodes:
         display.output_start_node(node)
 

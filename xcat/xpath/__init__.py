@@ -85,8 +85,8 @@ class Expression:
     def __mul__(self, other):
         return self.expr("*", other)
 
-    def __div__(self, other):
-        return self.expr("/", other)
+    def __truediv__(self, other):
+        return Expression(f'{self.string}/{other}')
 
     def __and__(self, other):
         return self.expr(" and ", other)

