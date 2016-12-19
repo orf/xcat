@@ -4,12 +4,17 @@ from typing import List
 from xcat.oob import OOBHttpServer
 from xcat.xpath.fs import current_dir
 from xcat.xpath.saxon import evaluate
-from xcat.xpath.xpath_3 import available_environment_variables, unparsed_text_available, generate_id
+from xcat.xpath.xpath_3 import (available_environment_variables, generate_id,
+                                unparsed_text_available)
+
 from .algorithms import ASCII_SEARCH_SPACE
 from .requester import Requester
 from .xpath import E
-from .xpath.xpath_1 import string_length, substring_before, string, boolean, normalize_space
-from .xpath.xpath_2 import string_to_codepoints, lower_case, exists, document_uri, current_date_time, doc_available, doc
+from .xpath.xpath_1 import (boolean, normalize_space, string, string_length,
+                            substring_before)
+from .xpath.xpath_2 import (current_date_time, doc, doc_available,
+                            document_uri, exists, lower_case,
+                            string_to_codepoints)
 
 Feature = namedtuple('Feature', 'name tests')
 

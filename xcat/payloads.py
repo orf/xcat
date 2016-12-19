@@ -1,8 +1,8 @@
 from collections import namedtuple
+from typing import List
 
 from .requester import Requester
 from .xpath import E
-from typing import List
 
 Injection = namedtuple('Injection', 'name example test_payloads payload_generator')
 

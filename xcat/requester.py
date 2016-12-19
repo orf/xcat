@@ -1,10 +1,10 @@
 import asyncio
-from typing import List, Callable, Dict
-from collections import defaultdict, Counter
-import aiohttp
+import time
+from collections import Counter, defaultdict
+from typing import Callable, Dict, List
 from urllib.parse import quote
 
-import time
+import aiohttp
 
 from xcat.oob import OOBHttpServer
 

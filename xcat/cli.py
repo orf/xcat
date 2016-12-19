@@ -7,22 +7,20 @@ Usage:
     xcat detectip
 
 """
-import docopt
 import asyncio
-import aiohttp
 import operator
+import time
+from typing import Callable
+
+import aiohttp
+import docopt
 import ipgetter
 
-import time
-
-
 from xcat.algorithms import get_nodes
-from xcat.requester import Requester
-from xcat.payloads import detect_payload
-from xcat.features import detect_features
-from typing import Callable
 from xcat.display import display_xml
-
+from xcat.features import detect_features
+from xcat.payloads import detect_payload
+from xcat.requester import Requester
 from xcat.shell import run_shell
 
 

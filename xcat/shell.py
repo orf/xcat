@@ -1,32 +1,31 @@
-import ipaddress
+import base64
 import pathlib
-
-import asyncio
-from collections import namedtuple
-from functools import reduce
-from operator import or_
-
-from tqdm import tqdm
+import shlex
 import sys
+from collections import namedtuple
 from os.path import expanduser
+
 from prompt_toolkit import prompt_async
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.contrib.completers import WordCompleter
 from prompt_toolkit.history import FileHistory
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from tqdm import tqdm
 
+from xcat.algorithms import (count, get_file_via_entity_injection, get_nodes,
+                             get_string, get_string_via_oob, iterate_all,
+                             upload_file_via_oob)
 from xcat.display import display_xml
 from xcat.requester import Requester
 from xcat.xpath import E
-from xcat.xpath.fs import write_text, append_binary, base_64_binary, delete, read_binary
+from xcat.xpath.fs import (append_binary, base_64_binary, delete, read_binary,
+                           write_text)
 from xcat.xpath.saxon import read_binary_resource
 from xcat.xpath.xpath_1 import concat, string, string_length, substring
-from xcat.xpath.xpath_2 import doc, document_uri, current_date_time, doc_available, resolve_uri
-from xcat.xpath.xpath_3 import unparsed_text_lines, unparsed_text_available, unparsed_text, \
-    available_environment_variables, environment_variable
-import shlex
-import base64
-from xcat.algorithms import iterate_all, count, get_string_via_oob, get_string, get_file_via_entity_injection, \
-    upload_file_via_oob, get_nodes
+from xcat.xpath.xpath_2 import (current_date_time, doc, doc_available,
+                                document_uri, resolve_uri)
+from xcat.xpath.xpath_3 import (available_environment_variables,
+                                environment_variable, unparsed_text,
+                                unparsed_text_available, unparsed_text_lines)
 
 
 class CommandFailed(RuntimeError):
@@ -241,4 +240,3 @@ def split_chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
-

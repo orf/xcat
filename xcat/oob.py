@@ -1,9 +1,10 @@
-from aiohttp import web
 import asyncio
-import random
 import functools
+import random
 from typing import Dict
 from urllib import parse
+
+from aiohttp import web
 
 ENTITY_INJECTION_TEMPLATE = "<!DOCTYPE stuff [<!ELEMENT data ANY> <!ENTITY goodies {0}>]> <data>&goodies;</data>"
 

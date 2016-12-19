@@ -1,15 +1,15 @@
+import asyncio
 import base64
 import string as stdlib_string
-import asyncio
 
-from xcat.xpath.fs import write_binary, base_64_binary
-from xcat.xpath.xpath_1 import string_length, substring_before, concat, string, normalize_space
-from xcat.xpath.xpath_2 import string_to_codepoints, doc, encode_for_uri
-from .xpath import xpath_1
+from xcat.xpath.fs import base_64_binary, write_binary
+from xcat.xpath.xpath_1 import (concat, normalize_space, string, string_length,
+                                substring_before)
+from xcat.xpath.xpath_2 import doc, encode_for_uri, string_to_codepoints
 
 from .display import XMLNode
 from .requester import Requester
-from .xpath import ROOT_NODE
+from .xpath import ROOT_NODE, xpath_1
 
 ASCII_SEARCH_SPACE = stdlib_string.digits + stdlib_string.ascii_letters + '+./:@_ -,()!'
 MISSING_CHARACTER = "?"

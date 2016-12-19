@@ -1,6 +1,5 @@
 from . import Function
 
-
 position = Function("position")
 count = Function("count")
 
