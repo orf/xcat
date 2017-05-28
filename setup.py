@@ -17,7 +17,7 @@ setup(name="xcat",
       license="MIT",
       author_email="tom@tomforb.es",
       package_dir={'xcat': 'xcat'},
-      packages=find_packages('xcat'),
+      packages=['xcat', 'xcat.xpath'],
       install_requires=["aiohttp~=2.1", "docopt", 'colorama', 'ipgetter', 'tqdm', 'prompt_toolkit'],
       entry_points={
           'console_scripts': [
