@@ -11,6 +11,7 @@ cache: pip
 install:
    - pip install .
    - wget https://github.com/orf/xcat_app/releases/download/0.1/xcat-app-jar-with-dependencies.jar
+   - wget https://github.com/orf/xcat_app/releases/download/0.1/database.xml
 
 script:
    - xcat detectip
