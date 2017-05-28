@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 import sys
 
@@ -17,7 +17,7 @@ setup(name="xcat",
       license="MIT",
       author_email="tom@tomforb.es",
       package_dir={'xcat': 'xcat'},
-      packages=["xcat"],
+      packages=find_packages('xcat'),
       install_requires=["aiohttp~=2.1", "docopt", 'colorama', 'ipgetter', 'tqdm', 'prompt_toolkit'],
       entry_points={
           'console_scripts': [
