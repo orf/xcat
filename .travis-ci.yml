@@ -1,0 +1,11 @@
+language: python
+
+python:
+   - 3.6
+   - nightly
+
+cache: pip
+
+script:
+   - pip install .
+   - xcat detectip
