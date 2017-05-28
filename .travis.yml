@@ -1,5 +1,6 @@
 language: python
 sudo: false
+dist: trusty
 
 python:
    - 3.6
@@ -9,6 +10,8 @@ cache: pip
 
 install:
    - pip install .
+   - wget https://github.com/orf/xcat_app/releases/download/0.1/xcat-app-jar-with-dependencies.jar
 
 script:
    - xcat detectip
+   - java -jar xcat-app-jar-with-dependencies.jar --version
