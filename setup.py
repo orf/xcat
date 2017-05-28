@@ -18,7 +18,7 @@ setup(name="xcat",
       author_email="tom@tomforb.es",
       package_dir={'xcat': 'xcat'},
       packages=["xcat"],
-      install_requires=["aiohttp", "docopt", 'colorama', 'ipgetter', 'tqdm', 'prompt_toolkit'],
+      install_requires=["aiohttp~=2.1", "docopt", 'colorama', 'ipgetter', 'tqdm', 'prompt_toolkit'],
       entry_points={
           'console_scripts': [
               'xcat = xcat.cli:run'

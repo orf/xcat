@@ -5,6 +5,7 @@ from typing import Callable, Dict, List
 from urllib.parse import quote
 
 import aiohttp
+from aiohttp.web_response import Response
 
 from xcat.oob import OOBHttpServer
 
@@ -21,11 +22,11 @@ def process_parameters(params: List[str]) -> Dict[str, str]:
 
 class Requester:
     def __init__(self, url: str, target_parameter: str, parameters: List[str],
-                 matcher: Callable[[aiohttp.Response, str], bool],
+                 matcher: Callable[[Response, str], bool],
                  session: aiohttp.ClientSession, concurrency=None, method="get",
                  injector: Callable[[str, str], str]=None,
                  external_ip=None, external_port=0,
-                 fast=False):
+                 fast=False, cookie='', body=''):
         self.url = url
         self.parameters = process_parameters(parameters)
 
@@ -50,6 +51,9 @@ class Requester:
         self.external_port = external_port
         self._oob_server_lock = asyncio.Lock()
         self._oob_server = None
+
+        self.body = body
+        self.cookie = cookie
 
     async def get_oob_server(self):
         if self.external_ip is None:
@@ -90,8 +94,13 @@ class Requester:
         async with self.semaphore:
             params = self.payload_to_parameters(payload)
 
+            headers = {}
+            if self.cookie:
+                headers['Cookie'] = self.cookie
+
             start = time.time()
-            response = await self.session.request(self.method, self.url, params=params)
+            response = await self.session.request(self.method, self.url, params=params,
+                                                  data=self.body, headers=headers)
             body = await response.text()
             request_time = time.time() - start
 

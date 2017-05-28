@@ -187,6 +187,10 @@ COMMANDS = [
 
 
 async def run_shell(requester: Requester):
+    if not sys.stdout.isatty():
+        print('Stdout is not a tty! Cannot open shell', file=sys.stderr)
+        return
+
     history = FileHistory(expanduser('~/.xcat_history'))
 
     command_dict = {

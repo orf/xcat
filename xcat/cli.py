@@ -4,8 +4,19 @@ XCat.
 Usage:
     xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--shell] [--fast]
          [--method=<method>] [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>] [--features]
+         [--body=<body>] [--cookie=<cookie>]
     xcat detectip
 
+
+Options:
+    -s, --shell                 Open the psudo-shell for exploring injections
+    -m, --method=<method>       HTTP method to use for requests
+    -o, --oob-ip=<ip>           Use this IP for OOB injection attacks
+    -p, --oob-port=<port>       Use this port for injection attacks
+    --stats                     Print statistics at the end of the session
+    -x, --concurrency=<val>     Make this many connections to the target server
+    -b, --body=<body>           A string that will be sent in the request body
+    -c, --cookie=<cookie>       A string that will be sent as the Cookie header
 """
 import asyncio
 import operator
@@ -15,6 +26,7 @@ from typing import Callable
 import aiohttp
 import docopt
 import ipgetter
+from aiohttp.web_response import Response
 
 from xcat.algorithms import get_nodes
 from xcat.display import display_xml
@@ -32,7 +44,7 @@ def run():
         ip = ipgetter.myip()
 
         if ip:
-            print(f'External IP: {ip}')
+            print(ip)
         else:
             print('Could not find external IP!')
         return
@@ -51,22 +63,24 @@ def run():
     stats = arguments['--stats']
     concurrency = arguments['--concurrency']
     only_features = arguments['--features']
+    body = arguments['--body']
+    cookie = arguments['--cookie']
 
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(start_action(url, target_parameter,
                                              parameters, match_function,
                                              oob_ip, oop_port,
-                                             shell, fast, stats, concurrency, only_features))
+                                             shell, fast, stats, concurrency, only_features, body, cookie))
     except KeyboardInterrupt:
         loop.stop()
 
 
 async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port,
-                       shell, fast, stats, concurrency, only_features):
+                       shell, fast, stats, concurrency, only_features, body, cookie):
     async with aiohttp.ClientSession() as session:
         payload_requester = Requester(url, target_parameter, parameters, match_function,
-                                      session, concurrency=concurrency)
+                                      session, concurrency=concurrency, body=body, cookie=cookie)
 
         print("Detecting injection points...")
         payloads = await detect_payload(payload_requester)
@@ -120,7 +134,7 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
                     print(f' - {name} {value}')
 
 
-def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
+def make_match_function(arguments) -> Callable[[Response, str], bool]:
     true_code, true_code_invert = arguments['--true-code'] or '', False
 
     if true_code.startswith('!'):
@@ -135,7 +149,7 @@ def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
 
     match_operator = operator.ne if true_code_invert or true_string_invert else operator.eq
 
-    def response_checker(response: aiohttp.Response, content: str) -> bool:
+    def response_checker(response: Response, content: str) -> bool:
         if true_code:
             match = match_operator(response.status, true_code)
         else:
@@ -144,9 +158,6 @@ def make_match_function(arguments) -> Callable[[aiohttp.Response, str], bool]:
         return match
 
     return response_checker
-
-
-
 
 
 if __name__ == "__main__":
