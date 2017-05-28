@@ -7,7 +7,6 @@ Usage:
          [--body=<body>] [--cookie=<cookie>]
     xcat detectip
 
-
 Options:
     -s, --shell                 Open the psudo-shell for exploring injections
     -m, --method=<method>       HTTP method to use for requests
