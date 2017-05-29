@@ -1,5 +1,7 @@
-About XCat
-==========
+XCat
+====
+
+[![Build Status](https://travis-ci.org/orf/xcat.svg?branch=master)](https://travis-ci.org/orf/xcat)
 
 XCat is a command line program that aides in the exploitation of blind XPath injection vulnerabilities. It can be used
 to retrieve the whole XML document being processed by a vulnerable XPath query, read arbitrary files on the hosts filesystem
