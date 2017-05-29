@@ -34,3 +34,4 @@ script:
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --features
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --fast
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG
+   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --cookie=abc --body=test
