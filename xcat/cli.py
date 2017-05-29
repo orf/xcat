@@ -2,9 +2,9 @@
 XCat.
 
 Usage:
-    xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--shell] [--fast]
-         [--method=<method>] [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>] [--features]
-         [--body=<body>] [--cookie=<cookie>]
+    xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--method=<method>]
+         [--fast] [--shell]  [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>]
+         [--features] [--body=<body>] [--cookie=<cookie>]
     xcat detectip
 
 Options:
@@ -16,6 +16,7 @@ Options:
     -x, --concurrency=<val>     Make this many connections to the target server
     -b, --body=<body>           A string that will be sent in the request body
     -c, --cookie=<cookie>       A string that will be sent as the Cookie header
+    -f, --fast                  Only fetch the first 15 characters of string values
 """
 import asyncio
 import operator
@@ -70,7 +71,8 @@ def run():
         loop.run_until_complete(start_action(url, target_parameter,
                                              parameters, match_function,
                                              oob_ip, oop_port,
-                                             shell, fast, stats, concurrency, only_features, body, cookie))
+                                             shell, fast, stats, concurrency,
+                                             only_features, body, cookie))
     except KeyboardInterrupt:
         loop.stop()
 
@@ -101,7 +103,7 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
         requester = Requester(url, target_parameter, parameters, match_function, session,
                               injector=chosen_payload.payload_generator,
                               external_ip=oob_ip, external_port=oob_port,
-                              fast=fast, concurrency=concurrency)
+                              fast=fast, concurrency=concurrency, body=body, cookie=cookie)
 
         print("Detecting Features...")
         features = await detect_features(requester)

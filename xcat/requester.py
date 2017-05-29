@@ -26,7 +26,7 @@ class Requester:
                  session: aiohttp.ClientSession, concurrency=None, method="get",
                  injector: Callable[[str, str], str]=None,
                  external_ip=None, external_port=0,
-                 fast=False, cookie='', body=''):
+                 fast=False, cookie='', body='', structure_only=False):
         self.url = url
         self.parameters = process_parameters(parameters)
 
@@ -45,6 +45,7 @@ class Requester:
         self.counters = defaultdict(Counter)
         self.features = defaultdict(bool)
         self.fast = fast
+        self.structure_only = structure_only
         self.total_requests = 0
 
         self.external_ip = external_ip
