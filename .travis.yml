@@ -21,12 +21,14 @@ install:
    - pip install .
    - wget https://github.com/orf/xcat_app/releases/download/0.1/xcat-app-jar-with-dependencies.jar
    - wget https://github.com/orf/xcat_app/releases/download/0.1/database.xml
+   - wget https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh
+   - chmod +x wait-for-it.sh
 
 script:
    - java -Dorg.slf4j.simpleLogger.defaultLogLevel=warn -jar xcat-app-jar-with-dependencies.jar &
-   - sleep 5
    - SERVER_PID=$!
    - SERVER=http://localhost:4567/
+   - wait-for-it.sh localhost:4567
    - xcat --help
    - xcat detectip
    - |
