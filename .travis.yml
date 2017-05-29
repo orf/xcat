@@ -32,6 +32,7 @@ script:
    - xcat --help
    - xcat detectip
    - if [ "oob" = "1" ]; then OOB_FLAG='--oob-ip=localhost'; fi
+   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --features --concurrency=1
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --features
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --fast
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG
