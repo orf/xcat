@@ -52,32 +52,33 @@ async def find_file_by_name(requester: Requester, file_name):
             if await requester.check(unparsed_text_available(path_expression)):
                 print(f'Text file {path} available')
 
+
 async def download_file(requester: Requester, remote_path, local_path):
-        local_path = pathlib.Path(local_path)
-        if local_path.exists():
-            print(f'{local_path} already exists! Not overwriting')
-            return
+    local_path = pathlib.Path(local_path)
+    if local_path.exists():
+        print(f'{local_path} already exists! Not overwriting')
+        return
 
-        func = read_binary if requester.features['expath-file'] else read_binary_resource
-        expression = string(func(remote_path))
+    func = read_binary if requester.features['expath-file'] else read_binary_resource
+    expression = string(func(remote_path))
 
-        print(f'Downloading {remote} to {local}')
+    print(f'Downloading {remote} to {local}')
 
-        size = await count(requester, expression, func=string_length)
-        print(f'Size: {size}')
+    size = await count(requester, expression, func=string_length)
+    print(f'Size: {size}')
 
-        CHUNK_SIZE = 5 * 1024
-        result = ""
-        for index in tqdm(range(1, size + 1, CHUNK_SIZE)):
-            data = await get_string_via_oob(requester, substring(expression, index, CHUNK_SIZE))
-            if data is None:
-                raise CommandFailed(f'Failed to download chunk {index}. Giving up. Sorry.')
-            else:
-                result += data
-            sys.stdout.flush()
-        sys.stdout.write('\n')
-        local_path.write_bytes(base64.decodebytes(result.encode()))
-        print(f'Downloaded, saved to {local_path}')
+    CHUNK_SIZE = 5 * 1024
+    result = ""
+    for index in tqdm(range(1, size + 1, CHUNK_SIZE)):
+        data = await get_string_via_oob(requester, substring(expression, index, CHUNK_SIZE))
+        if data is None:
+            raise CommandFailed(f'Failed to download chunk {index}. Giving up. Sorry.')
+        else:
+            result += data
+        sys.stdout.flush()
+    sys.stdout.write('\n')
+    local_path.write_bytes(base64.decodebytes(result.encode()))
+    print(f'Downloaded, saved to {local_path}')
 
 
 async def read_env(requester: Requester):
@@ -86,7 +87,7 @@ async def read_env(requester: Requester):
     env_output = [
         concat(env_name, ' = ', environment_variable(env_name))
         for env_name in all_exp[:total + 1]
-        ]
+    ]
     async for variable in iterate_all(requester, env_output):
         print(variable)
 
@@ -167,10 +168,11 @@ COMMANDS = [
             lambda requester: get_string(requester, document_uri(E('/'))), ['document-uri']),
     Command('time', [], 'Get the current date+time of the server',
             lambda requester: get_string(requester, string(current_date_time())), ['current-datetime']),
-    Command('rm', ['path'], 'Delete a file by path', 
+    Command('rm', ['path'], 'Delete a file by path',
             lambda requester, path: throwfailed(count(requester, delete(path))), ['expath-file']),
     Command('write-text', ['location', 'text'], 'Write text to location',
-            lambda requester, location, text: throwfailed(requester.check(write_text(location, text))), ['expath-file']),
+            lambda requester, location, text: throwfailed(requester.check(write_text(location, text))),
+            ['expath-file']),
     Command('cat_xml', ['path'], 'Read an XML file at "location"',
             lambda requester, location: display_xml(get_nodes(requester, doc(location) / '*')), ['doc-function']),
     Command('find-file', ['file-name'], 'Find a file by name in parent directories',
@@ -185,6 +187,11 @@ COMMANDS = [
     Command('help', [], 'Display help', show_help, None)
 ]
 
+command_dict = {
+    command.name: command
+    for command in COMMANDS
+}
+
 
 async def run_shell(requester: Requester):
     if not sys.stdout.isatty():
@@ -192,11 +199,6 @@ async def run_shell(requester: Requester):
         return
 
     history = FileHistory(expanduser('~/.xcat_history'))
-
-    command_dict = {
-        command.name: command
-        for command in COMMANDS
-    }
 
     completer = WordCompleter(list(command_dict.keys()),
                               meta_dict={command.name: f'{command.help_display} - {command.help_text}'
@@ -207,37 +209,41 @@ async def run_shell(requester: Requester):
     while True:
         cmd = await prompt_async('>> ', patch_stdout=True, completer=completer, history=history,
                                  auto_suggest=AutoSuggestFromHistory())
-        command = shlex.split(cmd)
-        if not command:
-            continue
-        elif len(command) == 1:
-            name, args = command[0], []
-        else:
-            name, args = command[0], command[1:]
+        await run_shell_command(requester, cmd)
 
-        if name not in command_dict:
-            print(f'Command {name} not found, try "help"')
-        else:
-            command = command_dict[name]
 
-        features_required = command.feature_test
-        if callable(features_required):
-            has_required_features = features_required(requester.features)
-        elif isinstance(features_required, (tuple, list)):
-            has_required_features = any(requester.features[f] for f in features_required)
-        elif features_required is None:
-            has_required_features = True
-        else:
-            raise RuntimeError(f'Unhandled features_required: {features_required}')
+async def run_shell_command(requester: Requester, cmd):
+    command = shlex.split(cmd)
+    if not command:
+        return
+    elif len(command) == 1:
+        name, args = command[0], []
+    else:
+        name, args = command[0], command[1:]
 
-        if not has_required_features:
-            print(f'Cannot use command {command.name}, not all required features are present in this injection')
-            continue
+    if name not in command_dict:
+        print(f'Command {name} not found, try "help"')
+    else:
+        command = command_dict[name]
 
-        try:
-            await command.function(requester, *args)
-        except CommandFailed as e:
-            print(f'Error! Command appeared to fail: {e}')
+    features_required = command.feature_test
+    if callable(features_required):
+        has_required_features = features_required(requester.features)
+    elif isinstance(features_required, (tuple, list)):
+        has_required_features = any(requester.features[f] for f in features_required)
+    elif features_required is None:
+        has_required_features = True
+    else:
+        raise RuntimeError(f'Unhandled features_required: {features_required}')
+
+    if not has_required_features:
+        print(f'Cannot use command {command.name}, not all required features are present in this injection')
+        return
+
+    try:
+        await command.function(requester, *args)
+    except CommandFailed as e:
+        print(f'Error! Command appeared to fail: {e}')
 
 
 def split_chunks(l, n):

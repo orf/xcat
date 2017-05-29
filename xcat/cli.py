@@ -3,12 +3,13 @@ XCat.
 
 Usage:
     xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--method=<method>]
-         [--fast] [--shell]  [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>]
-         [--features] [--body=<body>] [--cookie=<cookie>]
+         [--fast] [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>]
+         [--features] [--body=<body>] [--cookie=<cookie>] [(--shell | --shellcmd=<cmd>)]
     xcat detectip
 
 Options:
     -s, --shell                 Open the psudo-shell for exploring injections
+    -S, --shellcmd=<cmd>        Execute a single shell command.
     -m, --method=<method>       HTTP method to use for requests
     -o, --oob-ip=<ip>           Use this IP for OOB injection attacks
     -p, --oob-port=<port>       Use this port for injection attacks
@@ -33,7 +34,7 @@ from xcat.display import display_xml
 from xcat.features import detect_features
 from xcat.payloads import detect_payload
 from xcat.requester import Requester
-from xcat.shell import run_shell
+from xcat.shell import run_shell, run_shell_command
 
 
 def run():
@@ -59,6 +60,7 @@ def run():
     oop_port = arguments["--oob-port"]
 
     shell = arguments['--shell']
+    shell_cmd = arguments['--shellcmd']
     fast = arguments['--fast']
     stats = arguments['--stats']
     concurrency = arguments['--concurrency']
@@ -71,14 +73,14 @@ def run():
         loop.run_until_complete(start_action(url, target_parameter,
                                              parameters, match_function,
                                              oob_ip, oop_port,
-                                             shell, fast, stats, concurrency,
+                                             shell, shell_cmd, fast, stats, concurrency,
                                              only_features, body, cookie))
     except KeyboardInterrupt:
         loop.stop()
 
 
 async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port,
-                       shell, fast, stats, concurrency, only_features, body, cookie):
+                       shell, shell_cmd, fast, stats, concurrency, only_features, body, cookie):
     async with aiohttp.ClientSession() as session:
         payload_requester = Requester(url, target_parameter, parameters, match_function,
                                       session, concurrency=concurrency, body=body, cookie=cookie)
@@ -116,8 +118,11 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
             return
 
         try:
-            if shell:
-                await run_shell(requester)
+            if shell or shell_cmd:
+                if shell:
+                    await run_shell(requester)
+                else:
+                    await run_shell_command(requester, shell_cmd)
             else:
                 t1 = time.time()
                 await display_xml([await get_nodes(requester)])
