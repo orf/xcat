@@ -14,7 +14,7 @@ from .xpath.xpath_1 import (boolean, normalize_space, string, string_length,
                             substring_before)
 from .xpath.xpath_2 import (current_date_time, doc, doc_available,
                             document_uri, exists, lower_case,
-                            string_to_codepoints)
+                            string_to_codepoints, encode_for_uri, ends_with)
 
 Feature = namedtuple('Feature', 'name tests')
 
@@ -37,7 +37,9 @@ def test_oob(endpoint):
 features = [
     Feature('xpath-2',
             [
-                lower_case('A') == 'a'
+                lower_case('A') == 'a',
+                ends_with('thetest', 'test'),
+                encode_for_uri('test') == 'test'
             ]),
     Feature('xpath-3',
             [
