@@ -1,6 +1,7 @@
-from setuptools import setup, find_packages
 import os
 import sys
+
+from setuptools import find_packages, setup
 
 if sys.version_info < (3, 6):
     raise RuntimeError('xcat requires Python 3.6!')
@@ -17,8 +18,16 @@ setup(name="xcat",
       license="MIT",
       author_email="tom@tomforb.es",
       package_dir={'xcat': 'xcat'},
-      packages=['xcat', 'xcat.xpath'],
-      install_requires=["aiohttp~=2.1", "docopt", 'colorama', 'ipgetter', 'tqdm', 'prompt_toolkit'],
+      packages=['xcat'],
+      install_requires=[
+          'xpath-expressions~=0.2',
+          'aiohttp~=2.1',
+          'docopt',
+          'colorama',
+          'ipgetter',
+          'tqdm',
+          'prompt_toolkit'
+      ],
       entry_points={
           'console_scripts': [
               'xcat = xcat.cli:run'

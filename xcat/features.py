@@ -1,20 +1,20 @@
 from collections import namedtuple
 from typing import List
 
+from xpath import E
+from xpath.functions import (available_environment_variables, boolean,
+                             current_date_time, doc, doc_available,
+                             document_uri, encode_for_uri, ends_with, exists,
+                             generate_id, lower_case, normalize_space, string,
+                             string_length, string_to_codepoints,
+                             substring_before, unparsed_text_available)
+from xpath.functions.fs import current_dir
+from xpath.functions.saxon import evaluate
+
 from xcat.oob import OOBHttpServer
-from xcat.xpath.fs import current_dir
-from xcat.xpath.saxon import evaluate
-from xcat.xpath.xpath_3 import (available_environment_variables, generate_id,
-                                unparsed_text_available)
 
 from .algorithms import ASCII_SEARCH_SPACE
 from .requester import Requester
-from .xpath import E
-from .xpath.xpath_1 import (boolean, normalize_space, string, string_length,
-                            substring_before)
-from .xpath.xpath_2 import (current_date_time, doc, doc_available,
-                            document_uri, exists, lower_case,
-                            string_to_codepoints, encode_for_uri, ends_with)
 
 Feature = namedtuple('Feature', 'name tests')
 
@@ -26,8 +26,8 @@ def test_oob(endpoint):
             return False
 
         result = await requester.check(
-                doc(server.location + endpoint).add_path('/data') == server.test_response_value
-            )
+            doc(server.location + endpoint).add_path('/data') == server.test_response_value
+        )
 
         return result
 

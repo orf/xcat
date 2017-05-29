@@ -21,8 +21,8 @@ Options:
 """
 import asyncio
 import operator
-import time
 import sys
+import time
 from typing import Callable
 
 import aiohttp

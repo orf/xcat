@@ -10,22 +10,21 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.contrib.completers import WordCompleter
 from prompt_toolkit.history import FileHistory
 from tqdm import tqdm
+from xpath import E
+from xpath.functions import (available_environment_variables, concat,
+                             current_date_time, doc, doc_available,
+                             document_uri, environment_variable, resolve_uri,
+                             string, string_length, substring, unparsed_text,
+                             unparsed_text_available, unparsed_text_lines)
+from xpath.functions.fs import (append_binary, base_64_binary, delete,
+                                read_binary, write_text)
+from xpath.functions.saxon import read_binary_resource
 
 from xcat.algorithms import (count, get_file_via_entity_injection, get_nodes,
                              get_string, get_string_via_oob, iterate_all,
                              upload_file_via_oob)
 from xcat.display import display_xml
 from xcat.requester import Requester
-from xcat.xpath import E
-from xcat.xpath.fs import (append_binary, base_64_binary, delete, read_binary,
-                           write_text)
-from xcat.xpath.saxon import read_binary_resource
-from xcat.xpath.xpath_1 import concat, string, string_length, substring
-from xcat.xpath.xpath_2 import (current_date_time, doc, doc_available,
-                                document_uri, resolve_uri)
-from xcat.xpath.xpath_3 import (available_environment_variables,
-                                environment_variable, unparsed_text,
-                                unparsed_text_available, unparsed_text_lines)
 
 
 class CommandFailed(RuntimeError):
