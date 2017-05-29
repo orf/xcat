@@ -22,7 +22,7 @@ install:
    - wget https://github.com/orf/xcat_app/releases/download/0.1/database.xml
 
 script:
-   - java -jar xcat-app-jar-with-dependencies.jar &
+   - java -Dorg.slf4j.simpleLogger.defaultLogLevel=warn -jar xcat-app-jar-with-dependencies.jar &
    - SERVER_PID=$!
    - SERVER=http://localhost:4567/
    - xcat --help
@@ -31,6 +31,6 @@ script:
     if [ "oob" = "1" ]; then
       OOB_FLAG='--oob-ip=localhost'
     fi
-   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG  --features
+   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --features
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --fast
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG
