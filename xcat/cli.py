@@ -22,6 +22,7 @@ Options:
 import asyncio
 import operator
 import time
+import sys
 from typing import Callable
 
 import aiohttp
@@ -64,6 +65,13 @@ def run():
     fast = arguments['--fast']
     stats = arguments['--stats']
     concurrency = arguments['--concurrency']
+
+    if concurrency:
+        if not concurrency.isdigit():
+            print('Error: Concurrency is not an integer', file=sys.stderr)
+            return
+        concurrency = int(concurrency)
+
     only_features = arguments['--features']
     body = arguments['--body']
     cookie = arguments['--cookie']
