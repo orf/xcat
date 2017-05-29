@@ -2,9 +2,7 @@ language: python
 sudo: false
 dist: trusty
 
-python:
-   - 3.6
-   - nightly
+python: 3.6
 
 cache: pip
 
