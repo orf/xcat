@@ -31,10 +31,7 @@ script:
    - wait-for-it.sh localhost:4567
    - xcat --help
    - xcat detectip
-   - |
-    if [ "oob" = "1" ]; then
-      OOB_FLAG='--oob-ip=localhost'
-    fi
+   - if [ "oob" = "1" ]; then OOB_FLAG='--oob-ip=localhost'; fi
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --features
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --fast
    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG
