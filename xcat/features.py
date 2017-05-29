@@ -1,3 +1,4 @@
+import asyncio
 from collections import namedtuple
 from typing import List
 
@@ -105,7 +106,7 @@ async def detect_features(requester: Requester) -> List[Feature]:
         if callable(feature.tests):
             checks = [await feature.tests(requester)]
         else:
-            checks = [await requester.check(test) for test in feature.tests]
+            checks = await asyncio.gather(*[requester.check(test) for test in feature.tests])
 
         returner.append((feature, all(checks)))
 

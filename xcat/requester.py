@@ -24,7 +24,7 @@ class Requester:
     def __init__(self, url: str, target_parameter: str, parameters: List[str],
                  matcher: Callable[[Response, str], bool],
                  session: aiohttp.ClientSession, concurrency=None, method="get",
-                 injector: Callable[[str, str], str]=None,
+                 injector: Callable[[str, str], str] = None,
                  external_ip=None, external_port=0,
                  fast=False, cookie='', body='', structure_only=False):
         self.url = url
@@ -32,7 +32,9 @@ class Requester:
 
         if target_parameter not in self.parameters:
             present_keys = ", ".join(self.parameters.keys())
-            raise RuntimeError(f'Target parameter {target_parameter} not present, available choices: {present_keys}')
+            raise RuntimeError('Target parameter {target_parameter} not present,'
+                               ' available choices: {present_keys}'.format(target_parameter=target_parameter,
+                                                                           present_keys=present_keys))
 
         self.target_parameter = target_parameter
         self.matcher = matcher
@@ -67,7 +69,7 @@ class Requester:
             server = OOBHttpServer(self.external_ip, self.external_port)
             await server.start()
             self._oob_server = server
-            print(f'OOB Server running on: {server.location}')
+            print('OOB Server running on: {server.location}'.format(server=server))
             return server
 
     async def stop_oob_server(self):

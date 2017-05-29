@@ -1,3 +1,4 @@
+import asyncio
 from collections import namedtuple
 from typing import List
 
@@ -78,12 +79,18 @@ async def detect_payload(requester: Requester) -> List[Injection]:
     returner = []
 
     for injector in injectors:
-        results = [
-            await requester.check(test_payload.format(working=working)) == expected
+        result_futures = [
+            requester.check(test_payload.format(working=working))
             for (test_payload, expected) in injector.test_payloads
             ]
 
-        if all(results):
+        results = await asyncio.gather(*result_futures)
+
+        for idx, (test_payload, expected) in enumerate(injector.test_payloads):
+            if results[idx] == expected:
+                continue
+            break
+        else:
             returner.append(injector)
 
     return returner

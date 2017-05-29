@@ -98,7 +98,7 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
 
         for payload in payloads:
             print(payload.name)
-            print(f' - Example: {payload.example}')
+            print(' - Example: {payload.example}'.format(payload=payload))
 
         if not payloads:
             print("No payloads found! Perhaps the target is not injectable, or xcat just sucks")
@@ -119,7 +119,8 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
         features = await detect_features(requester)
 
         for feature, available in features:
-            print(f' - {feature.name} - {available}')
+            print(' - {feature.name} - {available}'.format(feature=feature,
+                                                           available=available))
             requester.features[feature.name] = available
 
         if only_features:
@@ -135,17 +136,17 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
                 t1 = time.time()
                 await display_xml([await get_nodes(requester)])
                 t2 = time.time()
-                print(f'Total Time: {round(t2-t1)} seconds')
-            print(f'Total Requests: {requester.total_requests}')
+                print('Total Time: {time} seconds'.format(time=round(t2-t1)))
+            print('Total Requests: {requester.total_requests}'.format(requester=requester))
         finally:
             await requester.stop_oob_server()
 
         if stats:
             print('Stats:')
             for name, counter in requester.counters.items():
-                print(f'{name}:')
+                print('{name}:'.format(name=name))
                 for name, value in counter.most_common(10):
-                    print(f' - {name} {value}')
+                    print(' - {name} {value}'.format(name=name, value=value))
 
 
 def make_match_function(arguments) -> Callable[[Response, str], bool]:

