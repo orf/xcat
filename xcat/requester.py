@@ -96,14 +96,26 @@ class Requester:
     async def check(self, payload) -> bool:
         async with self.semaphore:
             params = self.payload_to_parameters(payload)
+            paramsAsString = "";
+            for k,v in params.items():
+                paramsAsString = paramsAsString + "&"+k+"="+v;
 
             headers = {}
             if self.cookie:
                 headers['Cookie'] = self.cookie
 
             start = time.time()
-            response = await self.session.request(self.method, self.url, params=params,
-                                                  data=self.body, headers=headers)
+            if self.method.upper() == "POST":
+                headers['Content-Type'] = "application/x-www-form-urlencoded"
+                body = self.body
+                if self.body:
+                    body = body + paramsAsString
+                else:
+                    body = paramsAsString[1:]
+                response = await self.session.request(self.method, self.url, data=body, headers=headers)
+            else:
+                response = await self.session.request(self.method, self.url, params=params, data=self.body, headers=headers)
+
             body = await response.text()
             request_time = time.time() - start
 
