@@ -1,8 +1,18 @@
 XCat
 ====
 
-.. image:: https://travis-ci.org/orf/xcat.svg?branch=master
-    :target: https://travis-ci.org/orf/xcat
+|Build Status| |image1| |image2| |image3| |image4|
+
+.. |Build Status| image:: https://travis-ci.org/orf/xcat.svg?branch=master
+   :target: https://travis-ci.org/orf/xcat
+.. |image1| image:: https://img.shields.io/pypi/v/xcat.svg
+   :target: https://pypi.python.org/pypi/xcat
+.. |image2| image:: https://img.shields.io/pypi/l/xcat.svg
+   :target: https://pypi.python.org/pypi/xcat
+.. |image3| image:: https://img.shields.io/pypi/format/xcat.svg
+   :target: https://pypi.python.org/pypi/xcat
+.. |image4| image:: https://img.shields.io/pypi/pyversions/xcat.svg
+   :target: https://pypi.python.org/pypi/xcat
 
 XCat is a command line program that aides in the exploitation of blind XPath injection vulnerabilities. It can be used
 to retrieve the whole XML document being processed by a vulnerable XPath query, read arbitrary files on the hosts filesystem
