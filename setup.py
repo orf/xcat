@@ -20,7 +20,7 @@ setup(name="xcat",
       packages=['xcat'],
       install_requires=[
           'xpath-expressions~=0.2',
-          'aiohttp~=2.1',
+          'aiohttp~=2.2',
           'docopt',
           'colorama',
           'ipgetter',
