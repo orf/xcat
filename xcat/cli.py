@@ -65,6 +65,7 @@ def run():
     fast = arguments['--fast']
     stats = arguments['--stats']
     concurrency = arguments['--concurrency']
+    method = arguments['--method']
 
     if concurrency:
         if not concurrency.isdigit():
@@ -82,16 +83,16 @@ def run():
                                              parameters, match_function,
                                              oob_ip, oop_port,
                                              shell, shell_cmd, fast, stats, concurrency,
-                                             only_features, body, cookie))
+                                             only_features, body, cookie, method))
     except KeyboardInterrupt:
         loop.stop()
 
 
 async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port,
-                       shell, shell_cmd, fast, stats, concurrency, only_features, body, cookie):
+                       shell, shell_cmd, fast, stats, concurrency, only_features, body, cookie, method):
     async with aiohttp.ClientSession() as session:
         payload_requester = Requester(url, target_parameter, parameters, match_function,
-                                      session, concurrency=concurrency, body=body, cookie=cookie)
+                                      session, concurrency=concurrency, body=body, cookie=cookie, method=method)
 
         print("Detecting injection points...")
         payloads = await detect_payload(payload_requester)
@@ -113,7 +114,7 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
         requester = Requester(url, target_parameter, parameters, match_function, session,
                               injector=chosen_payload.payload_generator,
                               external_ip=oob_ip, external_port=oob_port,
-                              fast=fast, concurrency=concurrency, body=body, cookie=cookie)
+                              fast=fast, concurrency=concurrency, body=body, cookie=cookie, method=method)
 
         print("Detecting Features...")
         features = await detect_features(requester)
@@ -158,9 +159,9 @@ def make_match_function(arguments) -> Callable[[Response, str], bool]:
 
     true_string, true_string_invert = arguments['--true-string'] or '', False
 
-    if true_code.startswith('!'):
-        true_code_invert = True
-        true_code = true_code[1:]
+    if true_string.startswith('!'):
+        true_string_invert = True
+        true_string = true_string[1:]
 
     match_operator = operator.ne if true_code_invert or true_string_invert else operator.eq
 
