@@ -29,8 +29,8 @@ env:
 
 install:
    - pip install .
-   - wget https://github.com/orf/xcat_app/releases/download/0.1/xcat-app-jar-with-dependencies.jar
-   - wget https://github.com/orf/xcat_app/releases/download/0.1/database.xml
+   - wget https://github.com/orf/xcat_app/releases/download/0.2/xcat-app-jar-with-dependencies.jar
+   - wget https://github.com/orf/xcat_app/releases/download/0.2/database.xml
    - wget https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh
    - chmod +x wait-for-it.sh
 
