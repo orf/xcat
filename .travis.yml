@@ -12,12 +12,20 @@ git:
   depth: 1
 
 env:
-   - xversion=1.0 oob=1
-   - xversion=1.0 oob=0
-   - xversion=2.0 oob=1
-   - xversion=2.0 oob=0
-   - xversion=3.0 oob=1
-   - xversion=3.0 oob=0
+   - xversion=1.0 oob=0 post=0
+   - xversion=1.0 oob=0 post=1
+
+   - xversion=2.0 oob=1 post=1
+   - xversion=2.0 oob=1 post=0
+
+   - xversion=2.0 oob=0 post=1
+   - xversion=2.0 oob=0 post=0
+
+   - xversion=3.0 oob=1 post=1
+   - xversion=3.0 oob=1 post=0
+
+   - xversion=3.0 oob=0 post=1
+   - xversion=3.0 oob=0 post=0
 
 install:
    - pip install .
@@ -34,9 +42,11 @@ script:
    - xcat --help
    - xcat detectip
    - if [ "oob" = "1" ]; then OOB_FLAG='--oob-ip=localhost'; fi
-   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --features --concurrency=1
-   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --features
-   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --fast
-   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG
-   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --cookie=abc --body=test
-   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG --shellcmd="help"
+   - if [ "oob" = "1" ]; then POST_FLAG='--body --method=POST'; fi
+
+   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG
+   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --features --concurrency=1
+   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --features
+   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --fast
+   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --cookie=abc
+   - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --shellcmd="help"

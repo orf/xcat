@@ -14,7 +14,7 @@ Features
   - Extracts all nodes, comments, attributes and data from the entire XML document
   - Small and lightweight (only a few pure-python dependencies)
   - Parallel requests
-  - XPath 2.0 supported (with graceful degrading to 1.0)
+  - XPath 3.0 and 2.0 supported (with graceful degrading to 1.0)
   - Advanced data postback through HTTP (see below)
   - Arbitrarily read XML files on the servers file system via the doc() function (see below)
   - Arbitrarily read text files on the servers file system via crafted SYSTEM entities
@@ -28,9 +28,9 @@ Features
 
 Installation
 ------------
-You can install XCat via pip: `pip install xcat`. You should then have an `xcat` command available. XCat comes with 
-an example application you can test against, this can be found in the `example_application` directory. Check out it's 
-readme file to see how to run it.
+You can install XCat via pip: `pip3 install xcat`. You should then have an `xcat` command available.
+
+You can also install a sample vulnerable Java application [from this repository](https://github.com/orf/xcat_app)
 
 
 Examples
