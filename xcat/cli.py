@@ -10,11 +10,11 @@ Usage:
 Options:
     -s, --shell                 Open the psudo-shell for exploring injections
     -S, --shellcmd=<cmd>        Execute a single shell command.
-    -m, --method=<method>       HTTP method to use for requests
+    -m, --method=<method>       HTTP method to use for requests [default: GET]
     -o, --oob-ip=<ip>           Use this IP for OOB injection attacks
     -p, --oob-port=<port>       Use this port for injection attacks
     --stats                     Print statistics at the end of the session
-    -x, --concurrency=<val>     Make this many connections to the target server
+    -x, --concurrency=<val>     Make this many connections to the target server [default: 10]
     -b, --body=<body>           A string that will be sent in the request body
     -c, --cookie=<cookie>       A string that will be sent as the Cookie header
     -f, --fast                  Only fetch the first 15 characters of string values
