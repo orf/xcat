@@ -22,9 +22,16 @@ XCat is built to exploit boolean XPath injections (Where only one bit of data ca
 and it requires you to manually identify the exploit first, this does not do that for you. Check out the docs 
 at http://xcat.readthedocs.org/ for more info.
 
+Install:
+
+.. code:: console
+
+    ⇒  pip3 install xcat
+
 **Note:** This requires Python 3.5 and above to run.
 
-.. code-block:: shell
+
+.. code-block:: console
 
     ⇒  xcat --help
     XCat.
