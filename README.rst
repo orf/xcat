@@ -26,14 +26,14 @@ Install:
 
 .. code:: console
 
-    ⇒  pip3 install xcat
+    pip3 install xcat
 
 **Note:** This requires Python 3.5 and above to run.
 
 
 .. code-block:: console
 
-    ⇒  xcat --help
+    > xcat --help
     XCat.
 
     Usage:
