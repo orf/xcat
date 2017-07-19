@@ -26,33 +26,42 @@ Install:
 
 .. code:: console
 
-    pip3 install xcat
+   pip3 install xcat
 
 **Note:** This requires Python 3.5 and above to run.
 
 
 .. code-block:: console
 
-    > xcat --help
-    XCat.
+   > xcat --help
 
-    Usage:
-        xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--method=<method>]
-             [--fast] [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>]
-             [--features] [--body=<body>] [--cookie=<cookie>] [(--shell | --shellcmd=<cmd>)]
-        xcat detectip
+   XCat.
 
-    Options:
-        -s, --shell                 Open the psudo-shell for exploring injections
-        -S, --shellcmd=<cmd>        Execute a single shell command.
-        -m, --method=<method>       HTTP method to use for requests [default: GET]
-        -o, --oob-ip=<ip>           Use this IP for OOB injection attacks
-        -p, --oob-port=<port>       Use this port for injection attacks
-        --stats                     Print statistics at the end of the session
-        -x, --concurrency=<val>     Make this many connections to the target server [default: 10]
-        -b, --body=<body>           A string that will be sent in the request body
-        -c, --cookie=<cookie>       A string that will be sent as the Cookie header
-        -f, --fast                  Only fetch the first 15 characters of string values
+   Usage:
+       xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--method=<method>]
+            [--fast] [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>]
+            [--features] [--body] [--cookie=<cookie>] [(--shell | --shellcmd=<cmd>)]
+       xcat detectip
+
+   Options:
+       -s, --shell                 Open the psudo-shell for exploring injections
+       -S, --shellcmd=<cmd>        Execute a single shell command.
+       -m, --method=<method>       HTTP method to use for requests [default: GET]
+       -o, --oob-ip=<ip>           Use this IP for OOB injection attacks
+       -p, --oob-port=<port>       Use this port for injection attacks
+       -x, --concurrency=<val>     Make this many connections to the target server [default: 10]
+       -b, --body                  Send the parameters in the request body as form data. Used with POST requests.
+       -c, --cookie=<cookie>       A string that will be sent as the Cookie header
+       -f, --fast                  Only fetch the first 15 characters of string values
+       -t, --true-string=<string>  Interpret this string in the response body as being a truthful request. Negate with '!'
+       -tc, --true-code=<code>     Interpret this status code as being truthful. Negate with '!'
+       --stats                     Print statistics at the end of the session
+
 
 
 More examples and documentation can be found at http://xcat.readthedocs.org/
+
+Example Application
+-------------------
+
+There is a vulnerable Java web application for testing/demoing available here: https://github.com/orf/xcat_app

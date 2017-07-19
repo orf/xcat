@@ -26,7 +26,7 @@ class Requester:
                  session: aiohttp.ClientSession, concurrency=None, method="get",
                  injector: Callable[[str, str], str] = None,
                  external_ip=None, external_port=0,
-                 fast=False, cookie='', body='', structure_only=False):
+                 fast=False, cookie='', body=False, structure_only=False):
         self.url = url
         self.parameters = process_parameters(parameters)
 
@@ -96,25 +96,18 @@ class Requester:
     async def check(self, payload) -> bool:
         async with self.semaphore:
             params = self.payload_to_parameters(payload)
-            paramsAsString = "";
-            for k,v in params.items():
-                paramsAsString = paramsAsString + "&"+k+"="+v;
 
             headers = {}
             if self.cookie:
                 headers['Cookie'] = self.cookie
 
             start = time.time()
-            if self.method.upper() == "POST":
+
+            if self.body:
                 headers['Content-Type'] = "application/x-www-form-urlencoded"
-                body = self.body
-                if self.body:
-                    body = body + paramsAsString
-                else:
-                    body = paramsAsString[1:]
-                response = await self.session.request(self.method, self.url, data=body, headers=headers)
+                response = await self.session.request(self.method, self.url, data=params, headers=headers)
             else:
-                response = await self.session.request(self.method, self.url, params=params, data=self.body, headers=headers)
+                response = await self.session.request(self.method, self.url, params=params, headers=headers)
 
             body = await response.text()
             request_time = time.time() - start
