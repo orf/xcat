@@ -1,7 +1,8 @@
 XCat
 ====
 
-[![Build Status](https://travis-ci.org/orf/xcat.svg?branch=master)](https://travis-ci.org/orf/xcat)
+.. image:: https://travis-ci.org/orf/xcat.svg?branch=master
+    :target: https://travis-ci.org/orf/xcat
 
 XCat is a command line program that aides in the exploitation of blind XPath injection vulnerabilities. It can be used
 to retrieve the whole XML document being processed by a vulnerable XPath query, read arbitrary files on the hosts filesystem
@@ -11,20 +12,30 @@ XCat is built to exploit boolean XPath injections (Where only one bit of data ca
 and it requires you to manually identify the exploit first, this does not do that for you. Check out the docs 
 at http://xcat.readthedocs.org/ for more info.
 
-**Note:** This requires Python 3.4 to run.
+**Note:** This requires Python 3.5 and above to run.
+
+.. code-block:: shell
+
+    ⇒  xcat --help
+    XCat.
+
+    Usage:
+        xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--method=<method>]
+             [--fast] [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>]
+             [--features] [--body=<body>] [--cookie=<cookie>] [(--shell | --shellcmd=<cmd>)]
+        xcat detectip
+
+    Options:
+        -s, --shell                 Open the psudo-shell for exploring injections
+        -S, --shellcmd=<cmd>        Execute a single shell command.
+        -m, --method=<method>       HTTP method to use for requests [default: GET]
+        -o, --oob-ip=<ip>           Use this IP for OOB injection attacks
+        -p, --oob-port=<port>       Use this port for injection attacks
+        --stats                     Print statistics at the end of the session
+        -x, --concurrency=<val>     Make this many connections to the target server [default: 10]
+        -b, --body=<body>           A string that will be sent in the request body
+        -c, --cookie=<cookie>       A string that will be sent as the Cookie header
+        -f, --fast                  Only fetch the first 15 characters of string values
 
 
-An example::
-
-    >> xcat --public-ip="localhost" http://localhost:80 title=Bible title "Book found" run retrieve
-    Injecting using SingleQuoteString
-    Detecting features...
-    Supported features: XPath 2, String to codepoints, External DOC function, Entity injection, Substring search speedup
-    Retrieving /*[1]
-    <?xml version="1.0" encoding="utf-8"?>
-    <lib test="1" attribute1="3">
-        <book>
-                <!-- Comment -->
-                <title>Bible</title>
-                <description another="attribute">The holy book</description>
-    ...
+More examples and documentation can be found at http://xcat.readthedocs.org/
