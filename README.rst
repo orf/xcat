@@ -14,6 +14,10 @@ XCat
 .. |image4| image:: https://img.shields.io/pypi/pyversions/xcat.svg
    :target: https://pypi.python.org/pypi/xcat
 
+<a target='_blank' rel='nofollow' href='https://app.codesponsor.io/link/hZfyCKcjPR9bn6Z1vLn1WyHZ/orf/xcat'>
+  <img alt='Sponsor' width='888' height='68' src='https://app.codesponsor.io/embed/hZfyCKcjPR9bn6Z1vLn1WyHZ/orf/xcat.svg' />
+</a>
+
 XCat is a command line program that aides in the exploitation of blind XPath injection vulnerabilities. It can be used
 to retrieve the whole XML document being processed by a vulnerable XPath query, read arbitrary files on the hosts filesystem
 and utilize out of bound HTTP requests to make the server send data directly to xcat.
