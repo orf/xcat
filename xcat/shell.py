@@ -5,9 +5,9 @@ import sys
 from collections import namedtuple
 from os.path import expanduser
 
-from prompt_toolkit import prompt_async
+from prompt_toolkit import prompt
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-from prompt_toolkit.contrib.completers import WordCompleter
+from prompt_toolkit.completion import CompleteEvent, PathCompleter, WordCompleter
 from prompt_toolkit.history import FileHistory
 from tqdm import tqdm
 from xpath import E
@@ -207,8 +207,8 @@ async def run_shell(requester: Requester):
 
     print("XCat shell. Enter a command or 'help' for help. Funnily enough.")
     while True:
-        cmd = await prompt_async('>> ', patch_stdout=True, completer=completer, history=history,
-                                 auto_suggest=AutoSuggestFromHistory())
+        cmd = await prompt('>> ', patch_stdout=True, completer=completer, history=history,
+                                 auto_suggest=AutoSuggestFromHistory(), async_=True)
         await run_shell_command(requester, cmd)
 
 
