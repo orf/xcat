@@ -4,6 +4,7 @@ from typing import NamedTuple, Dict, Callable, Optional, Iterable, Tuple, Union,
 from aiohttp import ClientSession, TCPConnector
 import copy
 from contextlib import asynccontextmanager
+from asyncio import BoundedSemaphore
 
 
 class Encoding(enum.Enum):
@@ -45,17 +46,20 @@ class AttackContext(NamedTuple):
     common_strings = Counter()
     common_characters = Counter()
     injection: Injection = None
+    # Limiting aiohttp concurrency at the TCPConnector level seems to not work
+    # and leads to weird deadlocks. Use a semaphore here.
+    semaphore: BoundedSemaphore = None
 
     @asynccontextmanager
     async def start(self, injection: Injection = None) -> 'AttackContext':
         if self.session:
-            yield self.session
-            return
+            raise ValueError('already has a session')
 
-        connector = TCPConnector(ssl=False, limit=self.concurrency)
+        semaphore = BoundedSemaphore(self.concurrency)
+        connector = TCPConnector(ssl=False, limit=None)
         async with ClientSession(headers=self.headers, connector=connector) as sesh:
-            new_ctx = copy.deepcopy(self)
-            yield new_ctx._replace(session=sesh, injection=injection)
+            new_ctx = copy.copy(self)
+            yield new_ctx._replace(session=sesh, injection=injection, semaphore=semaphore)
 
     @property
     def target_parameter_value(self):
@@ -75,6 +79,7 @@ async def check(context: AttackContext, payload: str):
     else:
         args = {'data': parameters}
 
-    async with context.session.request(context.method, context.url, **args) as resp:
-        body = await resp.text()
-        return context.match_function(resp.status, body)
+    async with context.semaphore:
+        async with context.session.request(context.method, context.url, **args) as resp:
+            body = await resp.text()
+            return context.match_function(resp.status, body)

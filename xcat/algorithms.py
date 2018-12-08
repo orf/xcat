@@ -216,7 +216,6 @@ async def get_nodes(context: AttackContext, starting_path=ROOT_NODE):
         get_node_comments(context, starting_path),
         get_string(context, starting_path.name)
     )
-
     return (XMLNode(name=node_name, attributes=attributes, text=text_content, comments=comments),
             [get_nodes(context, starting_path=child) for child in starting_path.children(child_node_count)])
 

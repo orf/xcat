@@ -17,6 +17,8 @@ setup(name="xcat",
       install_requires=[
           'xpath-expressions~=0.2',
           'aiohttp~=3.0',
+          'aiodns',
+          'cchardet',
           'colorama',
           'tqdm',
           'prompt_toolkit',

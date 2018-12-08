@@ -166,3 +166,7 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
                 print('{name}:'.format(name=name))
                 for name, value in counter.most_common(10):
                     print(' - {name} {value}'.format(name=name, value=value))
+
+
+if __name__ == '__main__':
+    cli()
