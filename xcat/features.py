@@ -14,7 +14,6 @@ from xpath.functions.fs import current_dir
 from xpath.functions.saxon import evaluate
 
 from .algorithms import ASCII_SEARCH_SPACE
-from .requester import Requester
 
 
 class Feature(NamedTuple):
@@ -23,7 +22,7 @@ class Feature(NamedTuple):
 
 
 def test_oob(endpoint):
-    async def test_func(requester: Requester):
+    async def test_func(requester):
         server = await requester.get_oob_server()
         if server is None:
             return False

@@ -22,7 +22,6 @@ from xcat.algorithms import (count, get_file_via_entity_injection, get_nodes,
                              get_string, get_string_via_oob, iterate_all,
                              upload_file_via_oob)
 from xcat.display import display_xml
-from xcat.requester import Requester
 
 
 class CommandFailed(RuntimeError):
@@ -34,7 +33,7 @@ async def throwfailed(coro):
         raise CommandFailed()
 
 
-async def find_file_by_name(requester: Requester, file_name):
+async def find_file_by_name(requester, file_name):
     for i in range(10):
         path = ('../' * i) + file_name
         print(path)
@@ -50,7 +49,7 @@ async def find_file_by_name(requester: Requester, file_name):
                 print('Text file {path} available'.format(path=path))
 
 
-async def download_file(requester: Requester, remote_path, local_path):
+async def download_file(requester, remote_path, local_path):
     local_path = pathlib.Path(local_path)
     if local_path.exists():
         print('{local_path} already exists! Not overwriting'.format(local_path=local_path))
@@ -78,7 +77,7 @@ async def download_file(requester: Requester, remote_path, local_path):
     print('Downloaded, saved to {local_path}'.format(local_path=local_path))
 
 
-async def read_env(requester: Requester):
+async def read_env(requester):
     all_exp = available_environment_variables()
     total = await count(requester, all_exp)
     env_output = [
@@ -89,7 +88,7 @@ async def read_env(requester: Requester):
         print(await variable)
 
 
-async def cat(requester: Requester, path):
+async def cat(requester, path):
     if requester.features['unparsed-text']:
         if not await requester.check(unparsed_text_available(path)):
             print('File {path} doesn\'t seem to be available.'.format(path=path))
@@ -113,7 +112,7 @@ async def cat(requester: Requester, path):
         print(await get_file_via_entity_injection(requester, path))
 
 
-async def upload_file(requester: Requester, local_path, remote_path):
+async def upload_file(requester, local_path, remote_path):
     local_path = pathlib.Path(local_path)
     if not local_path.exists():
         print('Cannot find {local_path}!'.format(local_path=local_path))
@@ -144,7 +143,7 @@ async def upload_file(requester: Requester, local_path, remote_path):
         sys.stdout.write('\n')
 
 
-async def show_help(requester: Requester):
+async def show_help(requester):
     for command in COMMANDS:
         print(' * {command.name} - {command.help_display}'.format(command=command))
         print('   {command.help_text}'.format(command=command))
@@ -190,7 +189,7 @@ command_dict = {
 }
 
 
-async def run_shell(requester: Requester):
+async def run_shell(requester):
     if not sys.stdout.isatty():
         print('Stdout is not a tty! Cannot open shell', file=sys.stderr)
         return
@@ -210,7 +209,7 @@ async def run_shell(requester: Requester):
         await run_shell_command(requester, cmd)
 
 
-async def run_shell_command(requester: Requester, cmd):
+async def run_shell_command(requester, cmd):
     command = shlex.split(cmd)
     if not command:
         return
