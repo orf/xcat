@@ -12,21 +12,18 @@ Options:
     -p, --oob-port=<port>       Use this port for injection attacks
     --stats                     Print statistics at the end of the session
 """
+import contextlib
 import functools
-from typing import Iterable, List, Tuple
+from typing import List, Tuple
 
 import click
 import asyncio
-import time
 
-import aiohttp
-
-from xcat.algorithms import get_nodes
+from xcat import algorithms
 from xcat.attack import AttackContext, Encoding
 from xcat.display import display_xml
 from xcat.features import detect_features, Feature
 from xcat.injections import detect_injections, Injection
-from xcat.shell import run_shell, run_shell_command
 from xcat import utils
 
 
@@ -36,7 +33,6 @@ def cli():
 
 
 def attack_options(func):
-    @cli.command()
     @click.option('-m', '--method', default='GET', show_default=True)
     @click.option('-h', '--headers', required=False, type=utils.HeaderFile())
     @click.option('-b', '--body', required=False, type=click.File('rb'))
@@ -47,13 +43,15 @@ def attack_options(func):
                   help="Interpret this string in the response body as being a truthful request. Negate with '!'")
     @click.option('-tc', '--true-code', required=False, type=utils.NegatableInt(),
                   help="Interpret this response code as being a truthful request. Negate with '!'")
+    @click.option('--enable', required=False, type=utils.FeatureChoice())
+    @click.option('--disable', required=False, type=utils.FeatureChoice())
     @click.argument('url')
     @click.argument('target_parameter')
     @click.argument('parameters', nargs=-1, type=utils.DictParameters())
     @click.pass_context
     @functools.wraps(func)
     def wrapper(ctx, url, target_parameter, parameters, concurrency, fast_mode, body, headers, method,
-                encode, true_string, true_code):
+                encode, true_string, true_code, enable, disable, **kwargs):
         if body and encode != 'url':
             ctx.fail('Can only use --body with url encoding')
 
@@ -82,9 +80,19 @@ def attack_options(func):
             headers=headers,
             encoding=encode,
         )
-        return func(context)
+
+        if enable:
+            context.features.update({k: True for k in enable})
+
+        if disable:
+            context.features.update({k: False for k in disable})
+
+        return func(context, **kwargs)
+
+    return wrapper
 
 
+@cli.command()
 @attack_options
 def detect(attack_context):
     payloads: List[Injection] = asyncio.run(get_injections(attack_context))
@@ -104,9 +112,18 @@ def detect(attack_context):
         click.echo(click.style(str(available), 'green' if available else 'red'))
 
 
+@cli.command()
 @attack_options
 def run(attack_context):
     asyncio.run(start_attack(attack_context))
+
+
+@cli.command()
+@click.argument('file_path')
+@attack_options
+def cat(attack_context, file_path):
+    data = asyncio.run(start_cat(attack_context, file_path))
+    print(data)
 
 
 @cli.command()
@@ -129,43 +146,42 @@ async def get_features(context: AttackContext, injection: Injection):
         return await detect_features(ctx, injection)
 
 
-async def start_attack(context: AttackContext):
+@contextlib.asynccontextmanager
+async def setup_context(context: AttackContext) -> AttackContext:
     injections = await get_injections(context)
     if not injections:
         click.echo(click.style('Error: No injections detected', 'red'), err=True)
         exit(1)
     features = await get_features(context, injections[0])
     for feature, available in features:
+        if feature.name in context.features:
+            # This will have been force enable or disabled via the CLI flags
+            continue
         context.features[feature.name] = available
     async with context.start(injections[0]) as ctx:
-        await display_xml([await get_nodes(ctx)])
+        if context.features['oob-http']:
+            oob_ctx_manager = ctx.start_oob_server
+        else:
+            oob_ctx_manager = ctx.null_context
+        async with oob_ctx_manager() as oob_ctx:
+            yield oob_ctx
 
 
-async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port,
-                       shell, shell_cmd, fast, stats, concurrency, only_features, body, cookie, method):
-    async with aiohttp.ClientSession() as session:
+async def start_attack(context: AttackContext):
+    async with setup_context(context) as ctx:
+        await display_xml([await algorithms.get_nodes(ctx)])
 
-        try:
-            if shell or shell_cmd:
-                if shell:
-                    await run_shell(requester)
-                else:
-                    await run_shell_command(requester, shell_cmd)
-            else:
-                t1 = time.time()
-                await display_xml([await get_nodes(requester)])
-                t2 = time.time()
-                print('Total Time: {time} seconds'.format(time=round(t2 - t1)))
-            print('Total Requests: {requester.total_requests}'.format(requester=requester))
-        finally:
-            await requester.stop_oob_server()
 
-        if stats:
-            print('Stats:')
-            for name, counter in requester.counters.items():
-                print('{name}:'.format(name=name))
-                for name, value in counter.most_common(10):
-                    print(' - {name} {value}'.format(name=name, value=value))
+async def start_cat(context: AttackContext, file_path):
+    async with setup_context(context) as ctx:
+        if await algorithms.doc_available(ctx, file_path):
+            await display_xml([await algorithms.get_nodes(ctx, algorithms.doc(file_path) / algorithms.ROOT_NODE)])
+        else:
+            if not ctx.oob_app:
+                click.echo(click.style('Error: OOB http not available, '
+                                       'and file is either not available or not valid XML', 'red'), err=True)
+                exit(1)
+            contents = await algorithms.get_file_via_entity_injection(ctx, file_path)
 
 
 if __name__ == '__main__':

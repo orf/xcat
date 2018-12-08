@@ -4,8 +4,6 @@ from typing import List
 from xcat.attack import AttackContext, Injection, check
 from xpath import E
 
-
-
 injectors = [
     Injection('integer',
               "/lib/book[id=?]",

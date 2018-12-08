@@ -1,10 +1,10 @@
 import enum
 from collections import defaultdict, Counter
 from typing import NamedTuple, Dict, Callable, Optional, Iterable, Tuple, Union, List
-from aiohttp import ClientSession, TCPConnector
-import copy
+from aiohttp import ClientSession, TCPConnector, web
 from contextlib import asynccontextmanager
 from asyncio import BoundedSemaphore
+from xcat.oob import create_app
 
 
 class Encoding(enum.Enum):
@@ -49,17 +49,40 @@ class AttackContext(NamedTuple):
     # Limiting aiohttp concurrency at the TCPConnector level seems to not work
     # and leads to weird deadlocks. Use a semaphore here.
     semaphore: BoundedSemaphore = None
+    oob_host: str = None
+    oob_app: web.Application = None
 
     @asynccontextmanager
     async def start(self, injection: Injection = None) -> 'AttackContext':
         if self.session:
-            raise ValueError('already has a session')
+            raise RuntimeError('already has a session')
 
         semaphore = BoundedSemaphore(self.concurrency)
         connector = TCPConnector(ssl=False, limit=None)
         async with ClientSession(headers=self.headers, connector=connector) as sesh:
-            new_ctx = copy.copy(self)
-            yield new_ctx._replace(session=sesh, injection=injection, semaphore=semaphore)
+            yield self._replace(session=sesh, injection=injection, semaphore=semaphore)
+
+    @asynccontextmanager
+    async def start_oob_server(self) -> 'AttackContext':
+        if self.oob_app:
+            raise RuntimeError('OOB server has already been started')
+
+        app = create_app()
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, 'localhost')
+        await site.start()
+
+        new_ctx = self._replace(oob_host=site.name, oob_app=app)
+
+        try:
+            yield new_ctx
+        finally:
+            await runner.cleanup()
+
+    @asynccontextmanager
+    async def null_context(self) -> 'AttackContext':
+        yield self
 
     @property
     def target_parameter_value(self):
@@ -68,7 +91,7 @@ class AttackContext(NamedTuple):
 
 async def check(context: AttackContext, payload: str):
     if not context.session:
-        raise ValueError('AttackContext has no session. Use with_session()')
+        raise ValueError('AttackContext has no session. Use start()')
 
     parameters = context.parameters.copy()
     if context.injection:

