@@ -1,7 +1,6 @@
 import asyncio
 import functools
 import random
-from typing import Dict
 from urllib import parse
 
 from aiohttp import web
@@ -25,6 +24,7 @@ def _wrapper(func):
             raise RuntimeError('Unhandled response: {res}'.format(res=res))
 
     return _inner
+
 
 
 class OOBHttpServer:

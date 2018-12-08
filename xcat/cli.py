@@ -8,126 +8,142 @@ Usage:
     xcat detectip
 
 Options:
-    -s, --shell                 Open the psudo-shell for exploring injections
-    -S, --shellcmd=<cmd>        Execute a single shell command.
-    -m, --method=<method>       HTTP method to use for requests [default: GET]
     -o, --oob-ip=<ip>           Use this IP for OOB injection attacks
     -p, --oob-port=<port>       Use this port for injection attacks
-    -x, --concurrency=<val>     Make this many connections to the target server [default: 10]
-    -b, --body                  Send the parameters in the request body as form data. Used with POST requests.
-    -c, --cookie=<cookie>       A string that will be sent as the Cookie header
-    -f, --fast                  Only fetch the first 15 characters of string values
-    -t, --true-string=<string>  Interpret this string in the response body as being a truthful request. Negate with '!'
-    -tc, --true-code=<code>     Interpret this status code as being truthful. Negate with '!'
     --stats                     Print statistics at the end of the session
 """
+import functools
+from typing import Iterable, List, Tuple
+
+import click
 import asyncio
-import operator
-import sys
 import time
-from typing import Callable
 
 import aiohttp
-import docopt
-import ipgetter
-from aiohttp.web_response import Response
 
 from xcat.algorithms import get_nodes
+from xcat.attack import AttackContext, Encoding
 from xcat.display import display_xml
-from xcat.features import detect_features
-from xcat.payloads import detect_payload
-from xcat.requester import Requester
+from xcat.features import detect_features, Feature
+from xcat.injections import detect_injections, Injection
 from xcat.shell import run_shell, run_shell_command
+from xcat import utils
 
 
-def run():
-    arguments = docopt.docopt(__doc__)
+@click.group()
+def cli():
+    pass
 
-    if arguments['detectip']:
-        print('Finding external IP address...')
-        ip = ipgetter.myip()
 
-        if ip:
-            print(ip)
-        else:
-            print('Could not find external IP!')
-        return
+def attack_options(func):
+    @cli.command()
+    @click.option('-m', '--method', default='GET', show_default=True)
+    @click.option('-h', '--headers', required=False, type=utils.HeaderFile())
+    @click.option('-b', '--body', required=False, type=click.File('rb'))
+    @click.option('-e', '--encode', default=Encoding.URL, type=utils.EnumType(Encoding))
+    @click.option('-f', '--fast-mode', type=bool, default=False, show_default=True)
+    @click.option('-c', '--concurrency', type=int, default=10, show_default=True)
+    @click.option('-ts', '--true-string', required=False, type=utils.NegatableString(),
+                  help="Interpret this string in the response body as being a truthful request. Negate with '!'")
+    @click.option('-tc', '--true-code', required=False, type=utils.NegatableInt(),
+                  help="Interpret this response code as being a truthful request. Negate with '!'")
+    @click.argument('url')
+    @click.argument('target_parameter')
+    @click.argument('parameters', nargs=-1, type=utils.DictParameters())
+    @click.pass_context
+    @functools.wraps(func)
+    def wrapper(ctx, url, target_parameter, parameters, concurrency, fast_mode, body, headers, method,
+                encode, true_string, true_code):
+        if body and encode != 'url':
+            ctx.fail('Can only use --body with url encoding')
 
-    match_function = make_match_function(arguments)
+        if not true_code and not true_string:
+            ctx.fail('--true-code or --true-string is required')
 
-    url = arguments['<url>']
-    target_parameter = arguments['<target_parameter>']
-    parameters = arguments['<parameters>']
+        match_function = utils.make_match_function(true_code, true_string)
+        parameters = dict(parameters)
 
-    oob_ip = arguments["--oob-ip"]
-    oop_port = arguments["--oob-port"]
+        if target_parameter not in parameters:
+            ctx.fail(f'target parameter {target_parameter} is not in the given list of parameters')
 
-    shell = arguments['--shell']
-    shell_cmd = arguments['--shellcmd']
-    fast = arguments['--fast']
-    stats = arguments['--stats']
-    concurrency = arguments['--concurrency']
-    method = arguments['--method']
+        body_bytes = None
+        if body:
+            body_bytes = body.read()
 
-    if concurrency:
-        if not concurrency.isdigit():
-            print('Error: Concurrency is not an integer', file=sys.stderr)
-            return
-        concurrency = int(concurrency)
+        context = AttackContext(
+            url=url,
+            method=method,
+            target_parameter=target_parameter,
+            parameters=parameters,
+            match_function=match_function,
+            concurrency=concurrency,
+            fast_mode=fast_mode,
+            body=body_bytes,
+            headers=headers,
+            encoding=encode,
+        )
+        return func(context)
 
-    only_features = arguments['--features']
-    body = arguments['--body']
-    cookie = arguments['--cookie']
 
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(start_action(url, target_parameter,
-                                             parameters, match_function,
-                                             oob_ip, oop_port,
-                                             shell, shell_cmd, fast, stats, concurrency,
-                                             only_features, body, cookie, method))
-    except KeyboardInterrupt:
-        loop.stop()
+@attack_options
+def detect(attack_context):
+    payloads: List[Injection] = asyncio.run(get_injections(attack_context))
+
+    if not payloads:
+        click.echo(click.style('Error: No injections detected', 'red'), err=True)
+        exit(1)
+
+    for payload in payloads:
+        click.echo(click.style(payload.name, 'green'))
+        click.echo(' - Example: ' + click.style(payload.example, 'yellow'))
+
+    features: List[Tuple[Feature, bool]] = asyncio.run(get_features(attack_context, payloads[0]))
+    click.echo('Detected features:')
+    for feature, available in features:
+        click.echo(' - ' + click.style(feature.name, 'blue') + ': ', nl=False)
+        click.echo(click.style(str(available), 'green' if available else 'red'))
+
+
+@attack_options
+def run(attack_context):
+    asyncio.run(start_attack(attack_context))
+
+
+@cli.command()
+def get_ip():
+    ip = utils.get_ip()
+    if not ip:
+        click.echo('Could not find an external IP', err=True)
+    else:
+        click.echo(ip)
+    return
+
+
+async def get_injections(context: AttackContext):
+    async with context.start() as ctx:
+        return await detect_injections(ctx)
+
+
+async def get_features(context: AttackContext, injection: Injection):
+    async with context.start() as ctx:
+        return await detect_features(ctx, injection)
+
+
+async def start_attack(context: AttackContext):
+    injections = await get_injections(context)
+    if not injections:
+        click.echo(click.style('Error: No injections detected', 'red'), err=True)
+        exit(1)
+    features = await get_features(context, injections[0])
+    for feature, available in features:
+        context.features[feature.name] = available
+    async with context.start(injections[0]) as ctx:
+        await display_xml([await get_nodes(ctx)])
 
 
 async def start_action(url, target_parameter, parameters, match_function, oob_ip, oob_port,
                        shell, shell_cmd, fast, stats, concurrency, only_features, body, cookie, method):
     async with aiohttp.ClientSession() as session:
-        payload_requester = Requester(url, target_parameter, parameters, match_function,
-                                      session, concurrency=concurrency, body=body, cookie=cookie, method=method)
-
-        print("Detecting injection points...")
-        payloads = await detect_payload(payload_requester)
-
-        for payload in payloads:
-            print(payload.name)
-            print(' - Example: {payload.example}'.format(payload=payload))
-
-        if not payloads:
-            print("No payloads found! Perhaps the target is not injectable, or xcat just sucks")
-            return
-        elif len(payloads) > 1:
-            print("Multiple payloads found! Please specify them via the command line. "
-                  "In the future. When this is implemented.")
-            return
-        else:
-            chosen_payload = payloads[0]
-
-        requester = Requester(url, target_parameter, parameters, match_function, session,
-                              injector=chosen_payload.payload_generator,
-                              external_ip=oob_ip, external_port=oob_port,
-                              fast=fast, concurrency=concurrency, body=body, cookie=cookie, method=method)
-
-        print("Detecting Features...")
-        features = await detect_features(requester)
-
-        for feature, available in features:
-            print(' - {feature.name} - {available}'.format(feature=feature,
-                                                           available=available))
-            requester.features[feature.name] = available
-
-        if only_features:
-            return
 
         try:
             if shell or shell_cmd:
@@ -139,7 +155,7 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
                 t1 = time.time()
                 await display_xml([await get_nodes(requester)])
                 t2 = time.time()
-                print('Total Time: {time} seconds'.format(time=round(t2-t1)))
+                print('Total Time: {time} seconds'.format(time=round(t2 - t1)))
             print('Total Requests: {requester.total_requests}'.format(requester=requester))
         finally:
             await requester.stop_oob_server()
@@ -150,36 +166,3 @@ async def start_action(url, target_parameter, parameters, match_function, oob_ip
                 print('{name}:'.format(name=name))
                 for name, value in counter.most_common(10):
                     print(' - {name} {value}'.format(name=name, value=value))
-
-
-def make_match_function(arguments) -> Callable[[Response, str], bool]:
-    true_code, true_code_invert = arguments['--true-code'] or '', False
-
-    if true_code.startswith('!'):
-        true_code_invert = True
-        true_code = true_code[1:]
-
-    if true_code:
-        true_code = int(true_code)
-
-    true_string, true_string_invert = arguments['--true-string'] or '', False
-
-    if true_string.startswith('!'):
-        true_string_invert = True
-        true_string = true_string[1:]
-
-    match_operator = operator.ne if true_code_invert or true_string_invert else operator.eq
-
-    def response_checker(response: Response, content: str) -> bool:
-        if true_code:
-            match = match_operator(response.status, true_code)
-        else:
-            match = match_operator(true_string in content, True)
-
-        return match
-
-    return response_checker
-
-
-if __name__ == "__main__":
-    run()

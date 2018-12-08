@@ -1,8 +1,9 @@
 import asyncio
-from collections import namedtuple
-from typing import List
+from typing import List, NamedTuple
 
-from xpath import E
+from xcat.attack import AttackContext, check
+from xcat.injections import Injection
+from xpath import E, Expression
 from xpath.functions import (available_environment_variables, boolean,
                              current_date_time, doc, doc_available,
                              document_uri, encode_for_uri, ends_with, exists,
@@ -12,12 +13,13 @@ from xpath.functions import (available_environment_variables, boolean,
 from xpath.functions.fs import current_dir
 from xpath.functions.saxon import evaluate
 
-from xcat.oob import OOBHttpServer
-
 from .algorithms import ASCII_SEARCH_SPACE
 from .requester import Requester
 
-Feature = namedtuple('Feature', 'name tests')
+
+class Feature(NamedTuple):
+    name: str
+    tests: List[Expression]
 
 
 def test_oob(endpoint):
@@ -94,19 +96,17 @@ features = [
             [
                 evaluate('1+1') == 2
             ]),
-    Feature('oob-http', test_oob(OOBHttpServer.test_data_url)),
-    Feature('oob-entity-injection', test_oob(OOBHttpServer.test_entity_url))
+    # Feature('oob-http', test_oob(OOBHttpServer.test_data_url)),
+    # Feature('oob-entity-injection', test_oob(OOBHttpServer.test_entity_url))
 ]
 
 
-async def detect_features(requester: Requester) -> List[Feature]:
+async def detect_features(context: AttackContext, injector: Injection) -> List[Feature]:
     returner = []
 
     for feature in features:
-        if callable(feature.tests):
-            checks = [await feature.tests(requester)]
-        else:
-            checks = await asyncio.gather(*[requester.check(test) for test in feature.tests])
+        checks = await asyncio.gather(*[check(context, injector(context.target_parameter_value, test))
+                                        for test in feature.tests])
 
         returner.append((feature, all(checks)))
 

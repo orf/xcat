@@ -92,28 +92,3 @@ class Requester:
             params[param] = quote(params[param], safe='')
 
         return params
-
-    async def check(self, payload) -> bool:
-        async with self.semaphore:
-            params = self.payload_to_parameters(payload)
-
-            headers = {}
-            if self.cookie:
-                headers['Cookie'] = self.cookie
-
-            start = time.time()
-
-            if self.body:
-                headers['Content-Type'] = "application/x-www-form-urlencoded"
-                response = await self.session.request(self.method, self.url, data=params, headers=headers)
-            else:
-                response = await self.session.request(self.method, self.url, params=params, headers=headers)
-
-            body = await response.text()
-            request_time = time.time() - start
-
-            self.total_requests += 1
-
-            self.counters['response-status-codes'][response.status] += 1
-            self.counters['response-time'][round(request_time, -1)] += 1
-            return self.matcher(response, body)

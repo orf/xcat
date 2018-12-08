@@ -1,10 +1,6 @@
 import os
-import sys
 
-from setuptools import find_packages, setup
-
-if sys.version_info < (3, 5):
-    raise RuntimeError('xcat requires Python 3.5 or higher!')
+from setuptools import setup
 
 readme = ""
 if os.path.exists("README.rst"):
@@ -20,16 +16,16 @@ setup(name="xcat",
       packages=['xcat'],
       install_requires=[
           'xpath-expressions~=0.2',
-          'aiohttp~=2.2',
-          'docopt',
+          'aiohttp~=3.0',
           'colorama',
-          'ipgetter',
           'tqdm',
-          'prompt_toolkit'
+          'prompt_toolkit',
+          'click'
       ],
+      python_requires='>=3.7',
       entry_points={
           'console_scripts': [
-              'xcat = xcat.cli:run'
+              'xcat = xcat.cli:cli',
           ]
       },
       description="A command line tool to automate the exploitation of blind XPath injection vulnerabilities",
