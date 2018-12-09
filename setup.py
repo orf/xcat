@@ -3,8 +3,8 @@ import os
 from setuptools import setup
 
 readme = ""
-if os.path.exists("README.rst"):
-    with open("README.rst") as f:
+if os.path.exists("README.md"):
+    with open("README.md") as f:
         readme = f.read()
 
 setup(name="xcat",
@@ -32,6 +32,7 @@ setup(name="xcat",
       },
       description="A command line tool to automate the exploitation of blind XPath injection vulnerabilities",
       long_description=readme,
+      long_description_content_type='text/markdown',
       url="https://github.com/orf/xcat",
       classifiers=[
           'Programming Language :: Python :: 3',
