@@ -34,6 +34,8 @@ This feature speeds up retrieval by allowing us to binary search the string code
 There are a variety of other features that can speed up the retrieval, and some may cause slightly different output 
 to be retrieved.
 
+For a full rundown of how the features are used then see the algorithms.py file. 
+
 ## XPath expressions in Python
 
 XPath expressions are created and composed in pure Python 
