@@ -13,6 +13,8 @@ The easiest way to get started is to install the tool via pip:
 You can then use the `xcat` command to launch attacks. 
 See [commands](commands.md) for a full reference.
 
+There [is also a demo application you can run to test xcat](https://github.com/orf/xcat_app)
+
 ## Demo
 
 This demo shows xcat retrieving the full current XML file being queried, including data that should
