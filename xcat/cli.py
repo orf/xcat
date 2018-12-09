@@ -147,13 +147,13 @@ def ip():
 def injections():
     click.echo(f'Supports {len(injectors)} injections:')
     for injector in injectors:
-        click.echo(' - Name: ' + click.style(injector.name, 'bright_green'))
+        click.echo('Name: ' + click.style(injector.name, 'bright_green'))
         formatted_example = injector.example.replace('?', click.style('?', 'red'))
-        click.echo('   Example: ' + formatted_example)
-        click.echo('   Tests:')
+        click.echo(' Example: ' + formatted_example)
+        click.echo(' Tests:')
         for payload, expected in injector.test_payloads(click.style('?', 'red')):
             res = click.style('passes' if expected else 'fails', 'green' if expected else 'red')
-            click.echo(f'   - {payload} = {res}')
+            click.echo(f'   {payload} = {res}')
 
 
 async def get_injections(context: AttackContext):
