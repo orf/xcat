@@ -285,14 +285,12 @@ async def shell_loop(context: AttackContext):
     for c in BaseCommand.__subclasses__():
         for alias in c.alias:
             commands[alias] = commands[c.name]
-
     completer = WordCompleter(
         commands.keys(),
         meta_dict={
             name: command.help_display()
             for name, command in commands.items()
-        },
-        sentence=True
+        }
     )
     style = Style.from_dict({
         'prompt': '#884444',
@@ -308,8 +306,7 @@ async def shell_loop(context: AttackContext):
             style=style,
             async_=True,
             completer=completer,
-            auto_suggest=AutoSuggestFromHistory(),
-            enable_history_search=True
+            auto_suggest=AutoSuggestFromHistory()
         )
 
         split_input = shlex.split(user_input)
