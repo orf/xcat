@@ -67,7 +67,7 @@ async def get_string(context: AttackContext, expression, disable_normalization=F
 
     total_string_length = await count(context, expression, count_func=func.string_length)
 
-    if total_string_length == 0:
+    if total_string_length <= 0:
         return ""
 
     # Try common strings we've got before
@@ -176,7 +176,7 @@ async def substring_search(context: AttackContext, expression):
         func.string_length(func.substring_before(ASCII_SEARCH_SPACE, expression)),
         min=0,
         max=len(ASCII_SEARCH_SPACE))
-    if result == 0:
+    if result <= 0:
         return None
     else:
         return ASCII_SEARCH_SPACE[result]
