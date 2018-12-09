@@ -18,7 +18,7 @@ It supports an large number of features:
     - Automates XXE attacks
     - Can use OOB HTTP requests to drastically speed up retrieval
 
-- Custom headers and custom body
+- Custom request headers and body
 
 - Built in REPL shell, supporting:
     - Reading arbitrary files
