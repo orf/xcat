@@ -7,6 +7,8 @@
 
 XCat is a command line tool to exploit and investigate blind XPath injection vulnerabilities.
 
+For complete read the documentation here: https://xcat.readthedocs.io/en/latest/
+
 It supports an large number of features:
 
 - Auto-selects injections (run `xcat injections` for a list)
@@ -30,8 +32,6 @@ It supports an large number of features:
     - Uses binary search over unicode codepoints if available
     - Fallbacks include searching for common characters previously retrieved first
     - Normalizes unicode to reduce the search space
-
-For complete read the documentation here: https://xcat.readthedocs.io/en/latest/
 
 ## Install
 
