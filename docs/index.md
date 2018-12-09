@@ -23,3 +23,6 @@ for a full rundown of what XCat can do and how to use it.
 
 <script id="asciicast-216031" src="https://asciinema.org/a/216031.js" async></script>
 
+## XPath functions reference
+
+There is an amazing reference with all the available XPath functions here: https://maxtoroq.github.io/xpath-ref/
