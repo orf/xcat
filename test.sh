@@ -29,6 +29,13 @@ unset PYTHONWARNINGS
   [ "$status" -eq 0 ]
 }
 
+
+@test "Features: OOB" {
+  run xcat detect ${TEST_URL} query xversion=3.0 query=Rogue --true-string=Lawyer --oob=localhost:8000
+  [ "$status" -eq 0 ]
+  [ $(echo ${output} | grep -c "oob-http: True") -eq "1" ]
+}
+
 @test "Run: Simple" {
   run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer
   [ "$status" -eq 0 ]
