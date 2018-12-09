@@ -31,6 +31,7 @@ class EnumType(click.Choice):
     def convert(self, value, param, ctx):
         if isinstance(value, self._enum):
             return value
+        value = value.upper()
         return self._enum[super().convert(value, param, ctx)]
 
 
@@ -44,19 +45,20 @@ class HeaderFile(click.File):
         # ToDO: replace this with the new aiohttp header parser
         #  https://github.com/aio-libs/aiohttp/blob/15857de31e57574be595ac3fda673852eef64b63/aiohttp/http_parser.py#L76
 
-        lines = (line.strip() for line in open_file)
-        headers = {}
-        for line in lines:
-            if not line:
-                continue
-            try:
-                key, value = line.split(':', 1)
-            except ValueError:
-                self.fail(f'Not a valid header line: {line}')
+        with open_file as fd:
+            lines = (line.strip() for line in open_file)
+            headers = {}
+            for line in lines:
+                if not line:
+                    continue
+                try:
+                    key, value = line.split(':', 1)
+                except ValueError:
+                    self.fail(f'Not a valid header line: {line}')
 
-            headers[key] = value.strip()
+                headers[key] = value.strip()
 
-        return headers
+            return headers
 
 
 class DictParameters(click.ParamType):

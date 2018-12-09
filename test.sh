@@ -65,3 +65,36 @@ unset PYTHONWARNINGS
   [ "$status" -eq 0 ]
   [ "${lines[0]}" = "${FIRST_LINE}" ]
 }
+
+
+@test "Run: Headers file" {
+  cat <<EOF > $BATS_TMPDIR/headers
+Cookie: abcdef
+SomeHeader: abc
+EOF
+  run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --headers=$BATS_TMPDIR/headers
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "${FIRST_LINE}" ]
+}
+
+@test "Run: Headers file - Invalid" {
+  cat <<EOF > $BATS_TMPDIR/headers
+Cookie abcdef
+EOF
+  run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --headers=$BATS_TMPDIR/headers
+  [ $(echo ${output} | grep -c "Not a valid header line)") -ne "0" ]
+
+}
+
+@test "Run: POST" {
+  run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer -m POST -e form
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "${FIRST_LINE}" ]
+}
+
+@test "Run: Fast mode" {
+  run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --fast-mode
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "${FIRST_LINE}" ]
+  [ $(echo ${output} | grep -c "more characters)") -ne "0" ]
+}
