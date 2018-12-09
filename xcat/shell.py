@@ -58,7 +58,7 @@ class Env(BaseCommand):
         total = await algorithms.count(self.context, expr)
         for name_expr in expr[:total + 1]:
             env_name = await algorithms.get_string(self.context, name_expr)
-            print(env_name, '=', end='')
+            print(f'{env_name}=', end='')
             value_expr = func.environment_variable(name_expr)
             env_value = await algorithms.get_string(self.context, value_expr)
             print(env_value)
