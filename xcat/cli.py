@@ -113,12 +113,13 @@ def detect(attack_context):
 
     for payload in payloads:
         click.echo(click.style(payload.name, 'green'))
-        click.echo(' - Example: ' + click.style(payload.example, 'yellow'))
+        click.echo('Example: ' + click.style(payload.example, 'yellow'))
+    click.echo()
 
     features: List[Tuple[Feature, bool]] = asyncio.run(get_features(attack_context, payloads[0]))
     click.echo('Detected features:')
     for feature, available in features:
-        click.echo(' - ' + click.style(feature.name, 'blue') + ': ', nl=False)
+        click.echo(click.style(feature.name, 'blue') + ': ', nl=False)
         click.echo(click.style(str(available), 'green' if available else 'red'))
 
 
