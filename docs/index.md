@@ -25,4 +25,4 @@ for a full rundown of what XCat can do and how to use it.
 
 ## XPath functions reference
 
-There is an amazing reference with all the available XPath functions here: https://maxtoroq.github.io/xpath-ref/
+There is an amazing reference with all the available XPath functions here: [https://maxtoroq.github.io/xpath-ref/]()
