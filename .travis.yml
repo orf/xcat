@@ -14,7 +14,7 @@ before_install:
     - sudo apt-get install -qq bats
 
 install:
-    - docker run --name=xcat-app -p 127.0.0.1:4567:4567 -d tomforbes/xcat-app
+    - docker run --net=host --name=xcat-app -p 127.0.0.1:4567:4567 -d tomforbes/xcat-app
     - pip install .
 
 script:

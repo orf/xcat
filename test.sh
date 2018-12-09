@@ -2,6 +2,7 @@
 
 TEST_URL=${TEST_URL:-http://localhost:4567/}
 FIRST_LINE="<root first=\"1\" second=\"2\" third=\"\">"
+OOB_HOST=${OOB_HOST:-127.0.0.1:8000}
 unset PYTHONWARNINGS
 
 @test "Help works" {
@@ -31,7 +32,7 @@ unset PYTHONWARNINGS
 
 
 @test "Features: OOB" {
-  run xcat detect ${TEST_URL} query xversion=3.0 query=Rogue --true-string=Lawyer --oob=localhost:8000
+  run xcat detect ${TEST_URL} query xversion=3.0 query=Rogue --true-string=Lawyer --oob=${OOB_HOST}
   [ "$status" -eq 0 ]
   [ $(echo ${output} | grep -c "oob-http: True") -eq "1" ]
 }
@@ -61,7 +62,7 @@ unset PYTHONWARNINGS
 }
 
 @test "Run: With OOB server" {
-  run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --oob=localhost:8000
+  run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --oob=${OOB_HOST}
   [ "$status" -eq 0 ]
   [ "${lines[0]}" = "${FIRST_LINE}" ]
 }
