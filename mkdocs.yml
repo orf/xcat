@@ -3,4 +3,5 @@ theme: readthedocs
 nav:
     - Introduction: index.md
     - Commands: commands.md
+    - OOB server: oob.md
     - The Shell: shell.md
