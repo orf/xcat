@@ -5,3 +5,6 @@ nav:
     - Commands: commands.md
     - OOB server: oob.md
     - The Shell: shell.md
+repo_name: Github
+repo_url: https://github.com/orf/xcat/
+edit_uri: tree/master/docs/
