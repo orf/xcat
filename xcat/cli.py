@@ -38,7 +38,7 @@ def attack_options(func):
     @click.option('-h', '--headers', required=False, type=utils.HeaderFile())
     @click.option('-b', '--body', required=False, type=click.File('rb'))
     @click.option('-e', '--encode', default=Encoding.URL, type=utils.EnumType(Encoding))
-    @click.option('-f', '--fast-mode', is_flag=True, type=bool, default=False, show_default=True)
+    @click.option('-f', '--fast', is_flag=True, type=bool, default=False, show_default=True)
     @click.option('-c', '--concurrency', type=int, default=10, show_default=True)
     @click.option('-ts', '--true-string', required=False, type=utils.NegatableString(),
                   help="Interpret this string in the response body as being a truthful request. Negate with '!'")
@@ -53,7 +53,7 @@ def attack_options(func):
     @click.argument('parameters', nargs=-1, type=utils.DictParameters())
     @click.pass_context
     @functools.wraps(func)
-    def wrapper(ctx, url, target_parameter, parameters, concurrency, fast_mode, body, headers, method,
+    def wrapper(ctx, url, target_parameter, parameters, concurrency, fast, body, headers, method,
                 encode, true_string, true_code, enable, disable, oob, **kwargs):
         if body and encode != 'url':
             ctx.fail('Can only use --body with url encoding')
@@ -78,7 +78,7 @@ def attack_options(func):
             parameters=parameters,
             match_function=match_function,
             concurrency=concurrency,
-            fast_mode=fast_mode,
+            fast_mode=fast,
             body=body_bytes,
             headers=headers,
             encoding=encode,
@@ -148,7 +148,6 @@ def injections():
             click.echo(f'   - {payload} = {res}')
 
 
-
 async def get_injections(context: AttackContext):
     async with context.start() as ctx:
         return await detect_injections(ctx)
@@ -161,17 +160,17 @@ async def get_features(context: AttackContext, injection: Injection):
 
 @contextlib.asynccontextmanager
 async def setup_context(context: AttackContext) -> AttackContext:
-    injections = await get_injections(context)
-    if not injections:
+    detected_injections = await get_injections(context)
+    if not detected_injections:
         click.echo(click.style('Error: No injections detected', 'red'), err=True)
         exit(1)
-    features = await get_features(context, injections[0])
+    features = await get_features(context, detected_injections[0])
     for feature, available in features:
         if feature.name in context.features:
             # This will have been force enable or disabled via the CLI flags
             continue
         context.features[feature.name] = available
-    async with context.start(injections[0]) as ctx:
+    async with context.start(detected_injections[0]) as ctx:
         if context.features['oob-http']:
             oob_ctx_manager = ctx.start_oob_server
         else:

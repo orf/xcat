@@ -99,7 +99,7 @@ EOF
 }
 
 @test "Run: Fast mode" {
-  run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --fast-mode
+  run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --fast
   [ "$status" -eq 0 ]
   [ "${lines[0]}" = "${FIRST_LINE}" ]
   [ $(echo "${output}" | grep -c "more characters)") -ne "0" ]
