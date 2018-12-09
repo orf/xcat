@@ -1,4 +1,2 @@
 site_name: XCat
-pages:
-- [index.md, Home]
 theme: readthedocs
