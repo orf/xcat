@@ -1,4 +1,4 @@
-XCat is an advanced tool for exploiting XPath injection vulnerabilities, featuring a comprehensive 
+xcat is an advanced tool for exploiting XPath injection vulnerabilities, featuring a comprehensive 
 set of features to read the entire file being queried as well as other files on the filesystem, 
 environment variables and directories.
 

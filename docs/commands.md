@@ -44,14 +44,14 @@ are sent as-is.
 
 #### `--encode`
 
-XCat currently supports manipulating either URL or form parameters. This allows you to switch between 
+xcat currently supports manipulating either URL or form parameters. This allows you to switch between 
 sending the exploit payload via the POST body or URL arguments.
 
 **Example:** `xcat run ... --encode=form`
 
 #### `--fast`
 
-When this flag is present then XCat will only retrieve the first 15 characters of strings. This can drastically speed
+When this flag is present then xcat will only retrieve the first 15 characters of strings. This can drastically speed
 up retrieval in documents that contain very large strings.
 
 **Example:** `xcat run ... --fast`
@@ -65,7 +65,7 @@ exploitation, but can reduce the load on the target server.
 
 #### `--enable/--disable`
 
-XCat attempts to intelligently detect what features the target server supports and uses these to speed up 
+xcat attempts to intelligently detect what features the target server supports and uses these to speed up 
 retrieval. These flags let you force enable or disable these features.
 
 **Example:** `xcat run ... --enable=substring-search`
@@ -78,7 +78,7 @@ Enables the `oob` server. For more info see [the oob server documentation.](oob.
 
 # Detect
 
-This command will print out what injection XCat has detected, as well as a list of features and their status. You 
+This command will print out what injection xcat has detected, as well as a list of features and their status. You 
 can use this to quickly explore an injection and different parameter values before commencing an attack.
 
 ```shell
@@ -108,11 +108,34 @@ oob-entity-injection: False
 
 # run
 
+This is the core function of xcat. It will retrieve the whole document that is being queried with the
+vulnerable xpath expression.
+
+```shell
+$ xcat run http://localhost:4567/ query query=Rogue --true-string=Lawyer
+<root first="1" second="2" third="">
+	<!--My lovely library-->
+	<books>
+		<book>
+			<title>
+				Rogue Lawyer
+			</title>
+			<author>
+				John Grisham
+			</author>
+...
+```
+
+# shell
+
+This is one of the most powerful features of xcat. 
+Please see [the dedicated `shell` documentation here](shell.md)
+
 
 # injections
 
-This command prints out all the injections XCat currently can use, along with the sample expressions 
-XCat will use to test if this injection works.
+This command prints out all the injections xcat currently can use, along with the sample expressions 
+xcat will use to test if this injection works.
 
 ```shell
 $ xcat injections
