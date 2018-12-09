@@ -15,5 +15,9 @@ See [commands](commands.md) for a full reference.
 
 ## Demo
 
+This demo shows xcat retrieving the full current XML file being queried, including data that should
+be private (passwords). It uses the `--fast` option to speed up retrieval. [See the command reference](commands.md) 
+for a full rundown of what XCat can do and how to use it.
+
 <script id="asciicast-216031" src="https://asciinema.org/a/216031.js" async></script>
 
