@@ -82,8 +82,7 @@ This command will print out what injection XCat has detected, as well as a list 
 can use this to quickly explore an injection and different parameter values before commencing an attack.
 
 ```shell
-user:~$ xcat detect http://localhost:4567/ query query=Rogue --true-string=Lawyer
-
+$ xcat detect http://localhost:4567/ query query=Rogue --true-string=Lawyer
 function call - last string parameter - single quote
  - Example: /lib/something[function(?)]
 Detected features:
