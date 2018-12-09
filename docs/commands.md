@@ -10,7 +10,7 @@ At _minimum_ you need to supply:
 - A value for this parameter, and optionally others if required (`parameters`)
 - A string or a status code that is present in the response if the condition is True (`--true-string` and `--true-code`)
 
-For example, to attack the [example vulnerable application](https://github.com/orf/xcat_app) you would use:
+To attack the [example vulnerable application](https://github.com/orf/xcat_app) you would use:
 
 `xcat run http://localhost:4567/ query query=Rogue --true-string=Lawyer` 
 
