@@ -26,6 +26,11 @@ It supports an large number of features:
     - Listing directories
     - Uploading/downloading files (soon TM)
 
+- Optimized retrieval
+    - Uses binary search over unicode codepoints if available
+    - Fallbacks include searching for common characters previously retrieved first
+    - Normalizes unicode to reduce the search space
+
 For complete read the documentation here: https://xcat.readthedocs.io/en/latest/
 
 ## Install
