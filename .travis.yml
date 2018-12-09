@@ -4,23 +4,8 @@ dist: xenial
 cache: pip
 services: docker
 
-python: 3.7
-
-env:
-    - xversion=1.0 oob=0 post=0
-    - xversion=1.0 oob=0 post=1
-
-    - xversion=2.0 oob=1 post=1
-    - xversion=2.0 oob=1 post=0
-
-    - xversion=2.0 oob=0 post=1
-    - xversion=2.0 oob=0 post=0
-
-    - xversion=3.0 oob=1 post=1
-    - xversion=3.0 oob=1 post=0
-
-    - xversion=3.0 oob=0 post=1
-    - xversion=3.0 oob=0 post=0
+python:
+    - 3.7
 
 before_install:
     - pip install --upgrade pip
