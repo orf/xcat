@@ -50,6 +50,13 @@
             ],
             "version": "==3.4.4"
         },
+        "appdirs": {
+            "hashes": [
+                "sha256:9e5896d1372858f8dd3344faf4e5014d21849c756c8d5701f78f8a103b372d92",
+                "sha256:d8b24664561d0d34ddfaec54636d502d7cea6e29c3eaf68f3df6180863e2166e"
+            ],
+            "version": "==1.4.3"
+        },
         "async-timeout": {
             "hashes": [
                 "sha256:0c3c816a028d47f659d6ff5c745cb2acf1f966da1fe5c19c77a70282b25f4c5f",
@@ -195,13 +202,6 @@
             ],
             "version": "==1.11.0"
         },
-        "tqdm": {
-            "hashes": [
-                "sha256:3c4d4a5a41ef162dd61f1edb86b0e1c7859054ab656b2e7c7b77e7fbf6d9f392",
-                "sha256:5b4d5549984503050883bc126280b386f5f4ca87e6c023c5d015655ad75bdebb"
-            ],
-            "version": "==4.28.1"
-        },
         "wcwidth": {
             "hashes": [
                 "sha256:3df37372226d6e63e1b1e1eda15c594bca98a22d33a23832a90998faa96bc65e",
@@ -215,10 +215,10 @@
         },
         "xpath-expressions": {
             "hashes": [
-                "sha256:84475bde91ca391451f03d7da6c09983ca476344dcc3ff04c126fd2f9dd326f3",
-                "sha256:fcf8035e25dbf6354321f3ee82d8ae52d0caa8f66883cdefb7226a1ff48ad08a"
+                "sha256:6105e2f0351fe6d36f32cc3dbc9b31919a716bcbd3eaa17b2d78356acbbd7714",
+                "sha256:fff9d8e2598626678ea097a67de586151037322816786a13c03dbaea58eccdfb"
             ],
-            "version": "==0.2.2"
+            "version": "==1.0.1"
         },
         "yarl": {
             "hashes": [

@@ -15,14 +15,14 @@ setup(name="xcat",
       package_dir={'xcat': 'xcat'},
       packages=['xcat'],
       install_requires=[
-          'xpath-expressions~=0.2',
+          'xpath-expressions~=1.0',
           'aiohttp~=3.0',
           'aiodns',
           'cchardet',
           'colorama',
-          'tqdm',
           'prompt_toolkit',
-          'click'
+          'click',
+          'appdirs',
       ],
       python_requires='>=3.7',
       entry_points={

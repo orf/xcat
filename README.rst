@@ -1,6 +1,8 @@
 XCat
 ====
 
+Useful reference: https://maxtoroq.github.io/xpath-ref/
+
 |Build Status| |image1| |image2| |image3| |image4|
 
 .. |Build Status| image:: https://travis-ci.org/orf/xcat.svg?branch=master

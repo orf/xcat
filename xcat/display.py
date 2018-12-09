@@ -71,7 +71,7 @@ class XMLGeneratorWithComments(XMLGenerator):
 
     def writeComment(self, comment):
         with self.indent():
-            self._write("<!--{}-->".format(escape(comment)))
+            self._write(f"<!--{escape(comment)}-->")
 
     def characters(self, content):
         with self.indent():

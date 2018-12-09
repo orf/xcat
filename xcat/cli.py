@@ -19,12 +19,12 @@ from typing import List, Tuple
 import click
 import asyncio
 
-from xcat import algorithms
+from xcat import algorithms, utils
 from xcat.attack import AttackContext, Encoding
 from xcat.display import display_xml
 from xcat.features import detect_features, Feature
 from xcat.injections import detect_injections, Injection
-from xcat import utils
+from xcat.shell import shell_loop
 
 
 @click.group()
@@ -33,6 +33,7 @@ def cli():
 
 
 def attack_options(func):
+    @cli.command()
     @click.option('-m', '--method', default='GET', show_default=True)
     @click.option('-h', '--headers', required=False, type=utils.HeaderFile())
     @click.option('-b', '--body', required=False, type=click.File('rb'))
@@ -92,7 +93,6 @@ def attack_options(func):
     return wrapper
 
 
-@cli.command()
 @attack_options
 def detect(attack_context):
     payloads: List[Injection] = asyncio.run(get_injections(attack_context))
@@ -112,18 +112,14 @@ def detect(attack_context):
         click.echo(click.style(str(available), 'green' if available else 'red'))
 
 
-@cli.command()
 @attack_options
 def run(attack_context):
     asyncio.run(start_attack(attack_context))
 
 
-@cli.command()
-@click.argument('file_path')
 @attack_options
-def cat(attack_context, file_path):
-    data = asyncio.run(start_cat(attack_context, file_path))
-    print(data)
+def shell(attack_context):
+    asyncio.run(start_shell(attack_context))
 
 
 @cli.command()
@@ -172,16 +168,9 @@ async def start_attack(context: AttackContext):
         await display_xml([await algorithms.get_nodes(ctx)])
 
 
-async def start_cat(context: AttackContext, file_path):
+async def start_shell(context: AttackContext):
     async with setup_context(context) as ctx:
-        if await algorithms.doc_available(ctx, file_path):
-            await display_xml([await algorithms.get_nodes(ctx, algorithms.doc(file_path) / algorithms.ROOT_NODE)])
-        else:
-            if not ctx.oob_app:
-                click.echo(click.style('Error: OOB http not available, '
-                                       'and file is either not available or not valid XML', 'red'), err=True)
-                exit(1)
-            contents = await algorithms.get_file_via_entity_injection(ctx, file_path)
+        await shell_loop(ctx)
 
 
 if __name__ == '__main__':
