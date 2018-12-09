@@ -57,10 +57,7 @@ features = [
             ]),
     Feature('codepoint-search',
             [
-                func.string_to_codepoints("test")[1] == 116,
-                func.string_to_codepoints("test")[2] == 101,
-                func.string_to_codepoints("test")[3] == 115,
-                func.string_to_codepoints("test")[4] == 116,
+                func.string_to_codepoints("test")[1] == 116
             ]),
     Feature('environment-variables',
             [
