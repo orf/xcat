@@ -76,7 +76,7 @@ Enables the `oob` server. For more info see [the oob server documentation.](OOB-
 
 **Example:** `xcat run ... --oob=$EXTERNAL_IP:$EXTERNAL_PORT`
 
-# Detect
+# detect
 
 This command will print out what injection xcat has detected, as well as a list of features and their status. You 
 can use this to quickly explore an injection and different parameter values before commencing an attack.
