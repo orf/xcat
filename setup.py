@@ -8,7 +8,7 @@ if os.path.exists("README.md"):
         readme = f.read()
 
 setup(name="xcat",
-      version="1.0.0",
+      version="1.0.1",
       author="Tom Forbes",
       license="MIT",
       author_email="tom@tomforb.es",
