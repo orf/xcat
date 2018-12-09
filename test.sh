@@ -5,13 +5,19 @@ FIRST_LINE="<root first=\"1\" second=\"2\" third=\"\">"
 OOB_HOST=${OOB_HOST:-127.0.0.1:8000}
 unset PYTHONWARNINGS
 
-@test "Help works" {
+@test "Help: works" {
   run xcat --help
   [ "$status" -eq 0 ]
 }
 
-@test "Detect IP works" {
+@test "Detect IP: works" {
   run xcat ip
+  [ "$status" -eq 0 ]
+}
+
+@test "Injections: works" {
+  run xcat injections
+  [ "${lines[0]}" = "Supports 10 injections:" ]
   [ "$status" -eq 0 ]
 }
 

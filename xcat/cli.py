@@ -23,7 +23,7 @@ from xcat import algorithms, utils
 from xcat.attack import AttackContext, Encoding
 from xcat.display import display_xml
 from xcat.features import detect_features, Feature
-from xcat.injections import detect_injections, Injection
+from xcat.injections import detect_injections, Injection, injectors
 from xcat.shell import shell_loop
 
 
@@ -133,6 +133,20 @@ def ip():
     else:
         click.echo(ip)
     return
+
+
+@cli.command()
+def injections():
+    click.echo(f'Supports {len(injectors)} injections:')
+    for injector in injectors:
+        click.echo(' - Name: ' + click.style(injector.name, 'bright_green'))
+        formatted_example = injector.example.replace('?', click.style('?', 'red'))
+        click.echo('   Example: ' + formatted_example)
+        click.echo('   Tests:')
+        for payload, expected in injector.test_payloads(click.style('?', 'red')):
+            res = click.style('passes' if expected else 'fails', 'green' if expected else 'red')
+            click.echo(f'   - {payload} = {res}')
+
 
 
 async def get_injections(context: AttackContext):
