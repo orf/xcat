@@ -32,29 +32,29 @@ unset PYTHONWARNINGS
 @test "Run: Simple" {
   run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer
   [ "$status" -eq 0 ]
-  [ "${lines[0]}" = ${FIRST_LINE} ]
+  [ "${lines[0]}" = "${FIRST_LINE}" ]
 }
 
 @test "Run: without normalization" {
   run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --disable=normalize-space
   [ "$status" -eq 0 ]
-  [ "${lines[0]}" = ${FIRST_LINE} ]
+  [ "${lines[0]}" = "${FIRST_LINE}" ]
 }
 
 @test "Run: Without codepoint search" {
   run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --disable=codepoint-search
   [ "$status" -eq 0 ]
-  [ "${lines[0]}" = ${FIRST_LINE} ]
+  [ "${lines[0]}" = "${FIRST_LINE}" ]
 }
 
 @test "Run: Without codepoint and normalize" {
   run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --disable=codepoint-search,normalize-space
   [ "$status" -eq 0 ]
-  [ "${lines[0]}" = ${FIRST_LINE} ]
+  [ "${lines[0]}" = "${FIRST_LINE}" ]
 }
 
 @test "Run: With OOB server" {
   run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --oob=localhost:8000
   [ "$status" -eq 0 ]
-  [ "${lines[0]}" = ${FIRST_LINE} ]
+  [ "${lines[0]}" = "${FIRST_LINE}" ]
 }
