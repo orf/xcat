@@ -122,7 +122,7 @@ class Cat(BaseCommand):
 
     async def run(self, args):
         if not args:
-            path = PwdCommand.cwd_expression(self.context.features)
+            path = Pwd.cwd_expression(self.context.features)
         else:
             path = args[0]
         available = await check(self.context, func.unparsed_text_available(path))
