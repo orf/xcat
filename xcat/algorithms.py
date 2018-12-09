@@ -188,7 +188,7 @@ async def codepoint_search(context: AttackContext, expression):
         expression=func.string_to_codepoints(expression),
         min=0,
         max=255)
-    if result == 0:
+    if result <= 0:
         return None
     else:
         return chr(result)
