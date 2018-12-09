@@ -34,18 +34,25 @@ def cli():
 
 def attack_options(func):
     @cli.command()
-    @click.option('-m', '--method', default='GET', show_default=True)
-    @click.option('-h', '--headers', required=False, type=utils.HeaderFile())
-    @click.option('-b', '--body', required=False, type=click.File('rb'))
-    @click.option('-e', '--encode', default=Encoding.URL, type=utils.EnumType(Encoding))
-    @click.option('-f', '--fast', is_flag=True, type=bool, default=False, show_default=True)
-    @click.option('-c', '--concurrency', type=int, default=10, show_default=True)
+    @click.option('-m', '--method', default='GET', show_default=True, help='HTTP method to use')
+    @click.option('-h', '--headers', required=False, type=utils.HeaderFile(),
+                  help='A file containing extra headers')
+    @click.option('-b', '--body', required=False, type=click.File('rb'),
+                  help='A file containing data to send in the request body')
+    @click.option('-e', '--encode', default=Encoding.URL, type=utils.EnumType(Encoding),
+                  help='Where to send the parameters (POST body or in the URL)')
+    @click.option('-f', '--fast', is_flag=True, type=bool, default=False, show_default=True,
+                  help='If given only retrieve the first 15 characters of strings. Can speed up retrieval.')
+    @click.option('-c', '--concurrency', type=int, default=10, show_default=True,
+                  help='Number of concurrent requests to make')
     @click.option('-ts', '--true-string', required=False, type=utils.NegatableString(),
                   help="Interpret this string in the response body as being a truthful request. Negate with '!'")
     @click.option('-tc', '--true-code', required=False, type=utils.NegatableInt(),
                   help="Interpret this response code as being a truthful request. Negate with '!'")
-    @click.option('--enable', required=False, type=utils.FeatureChoice())
-    @click.option('--disable', required=False, type=utils.FeatureChoice())
+    @click.option('--enable', required=False, type=utils.FeatureChoice(),
+                  help='Force enable features')
+    @click.option('--disable', required=False, type=utils.FeatureChoice(),
+                  help='Force disable features')
     @click.option('--oob', required=False,
                   help='IP:port to listen on for OOB attacks. This enables the OOB server.')
     @click.argument('url')

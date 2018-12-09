@@ -1,2 +1,6 @@
 site_name: XCat
 theme: readthedocs
+nav:
+    - Introduction: index.md
+    - Commands: commands.md
+    - The Shell: shell.md
