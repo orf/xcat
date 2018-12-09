@@ -1,8 +1,10 @@
-import urllib.request
 import re
+import urllib.request
 from typing import Callable, Tuple
-from xcat.features import features
+
 import click
+
+from .features import features
 
 
 def get_ip():

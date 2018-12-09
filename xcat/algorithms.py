@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import string as stdlib_string
 
 from xpath import ROOT_NODE, func, Functions

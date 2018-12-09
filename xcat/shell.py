@@ -1,22 +1,19 @@
 import asyncio
-from typing import List, Dict, Set, FrozenSet
+from typing import List, Dict, FrozenSet
+import shlex
 
 import click
+import appdirs
+from pathlib import Path
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.eventloop.defaults import use_asyncio_event_loop
 from prompt_toolkit.styles import Style
-
-import appdirs
-import shlex
-
-from pathlib import Path
-
-from xcat import oob
-from . import algorithms, display
 from xpath import func, E
+
+from . import algorithms, display, oob
 from .attack import AttackContext, check
 
 

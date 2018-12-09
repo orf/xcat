@@ -15,9 +15,9 @@ Options:
 import contextlib
 import functools
 from typing import List, Tuple
+import asyncio
 
 import click
-import asyncio
 
 from xcat import algorithms, utils
 from xcat.attack import AttackContext, Encoding

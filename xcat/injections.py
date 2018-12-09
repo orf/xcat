@@ -1,8 +1,9 @@
 import asyncio
 from typing import List
 
-from xcat.attack import AttackContext, Injection, check
 from xpath import E
+
+from xcat.attack import AttackContext, Injection, check
 
 injectors = [
     Injection('integer',
