@@ -43,6 +43,8 @@ class AttackContext(NamedTuple):
     body: Optional[bytes]
     headers: Dict[str, str]
     encoding: Encoding
+    oob_details: str
+
     session: ClientSession = None
     features: Dict[str, bool] = defaultdict(bool)
     common_strings = Counter()
@@ -69,13 +71,15 @@ class AttackContext(NamedTuple):
         if self.oob_app:
             raise RuntimeError('OOB server has already been started')
 
+        host, port = self.oob_details.split(':', 1)
+
         app = create_app()
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, 'localhost')
+        site = web.TCPSite(runner, '0.0.0.0', int(port))
         await site.start()
 
-        new_ctx = self._replace(oob_host=site.name, oob_app=app)
+        new_ctx = self._replace(oob_host=f'http://{host}:{port}', oob_app=app)
 
         try:
             yield new_ctx

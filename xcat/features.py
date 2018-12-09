@@ -18,6 +18,9 @@ class Feature(NamedTuple):
 
 def test_oob(path):
     async def test_oob_inner(context: AttackContext, injector: Injection):
+        if not context.oob_details:
+            return False
+
         async with context.start_oob_server() as ctx:
             doc_expr = func.doc(f'{ctx.oob_host}{path}').add_path('/data') == ctx.oob_app['test_response_value']
             return await check(

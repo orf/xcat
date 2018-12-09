@@ -46,13 +46,15 @@ def attack_options(func):
                   help="Interpret this response code as being a truthful request. Negate with '!'")
     @click.option('--enable', required=False, type=utils.FeatureChoice())
     @click.option('--disable', required=False, type=utils.FeatureChoice())
+    @click.option('--oob', required=False,
+                  help='IP:port to listen on for OOB attacks. This enables the OOB server.')
     @click.argument('url')
     @click.argument('target_parameter')
     @click.argument('parameters', nargs=-1, type=utils.DictParameters())
     @click.pass_context
     @functools.wraps(func)
     def wrapper(ctx, url, target_parameter, parameters, concurrency, fast_mode, body, headers, method,
-                encode, true_string, true_code, enable, disable, **kwargs):
+                encode, true_string, true_code, enable, disable, oob, **kwargs):
         if body and encode != 'url':
             ctx.fail('Can only use --body with url encoding')
 
@@ -80,6 +82,7 @@ def attack_options(func):
             body=body_bytes,
             headers=headers,
             encoding=encode,
+            oob_details=oob
         )
 
         if enable:
@@ -123,7 +126,7 @@ def shell(attack_context):
 
 
 @cli.command()
-def get_ip():
+def ip():
     ip = utils.get_ip()
     if not ip:
         click.echo('Could not find an external IP', err=True)

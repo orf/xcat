@@ -9,25 +9,13 @@ python:
 
 before_install:
     - pip install --upgrade pip
+    - sudo add-apt-repository ppa:duggan/bats --yes
+    - sudo apt-get update -qq
+    - sudo apt-get install -qq bats
 
 install:
     - docker run --name=xcat-app -p 127.0.0.1:4567:4567 -d tomforbes/xcat-app
     - pip install .
 
 script:
-    - xcat --version
-#    - java -Dorg.slf4j.simpleLogger.defaultLogLevel=warn -jar xcat-app-jar-with-dependencies.jar &
-#    - SERVER_PID=$!
-#    - SERVER=http://localhost:4567/
-#    - ./wait-for-it.sh localhost:4567
-#    - xcat --help
-#    - xcat detectip
-#    - if [ "oob" = "1" ]; then OOB_FLAG='--oob-ip=localhost'; fi
-#    - if [ "oob" = "1" ]; then POST_FLAG='--body --method=POST'; fi
-#
-#    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG
-#    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --features --concurrency=1
-#    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --features
-#    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --fast
-#    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --cookie=abc
-#    - xcat $SERVER query xversion=$xversion query=Lawyer --true-string=Grisham $OOB_FLAG $POST_FLAG --shellcmd="help"
+    - bats test.sh

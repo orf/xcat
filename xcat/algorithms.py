@@ -19,7 +19,7 @@ async def count(context: AttackContext, expression, count_func=func.count):
         if result is not None and result.isdigit():
             return int(result)
 
-    return await binary_search(context, func(expression), min=0)
+    return await binary_search(context, count_func(expression), min=0)
 
 
 async def get_char(context: AttackContext, expression):
@@ -168,7 +168,7 @@ async def substring_search(context: AttackContext, expression):
     # So we need to explicitly check if the expression is equal to the first char in our search space.
     # Not optimal, but still works out fairly efficient.
 
-    if await check(expression == ASCII_SEARCH_SPACE[0]):
+    if await check(context, expression == ASCII_SEARCH_SPACE[0]):
         return ASCII_SEARCH_SPACE[0]
 
     result = await binary_search(
