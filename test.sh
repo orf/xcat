@@ -83,8 +83,7 @@ EOF
 Cookie abcdef
 EOF
   run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --headers=$BATS_TMPDIR/headers
-  [ $(echo ${output} | grep -c "Not a valid header line)") -ne "0" ]
-
+  [ $(echo "${output}" | grep -c "Not a valid header line") -ne "0" ]
 }
 
 @test "Run: POST" {
@@ -97,5 +96,5 @@ EOF
   run xcat run ${TEST_URL} query query=Rogue --true-string=Lawyer --fast-mode
   [ "$status" -eq 0 ]
   [ "${lines[0]}" = "${FIRST_LINE}" ]
-  [ $(echo ${output} | grep -c "more characters)") -ne "0" ]
+  [ $(echo "${output}" | grep -c "more characters)") -ne "0" ]
 }

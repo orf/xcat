@@ -38,7 +38,7 @@ def attack_options(func):
     @click.option('-h', '--headers', required=False, type=utils.HeaderFile())
     @click.option('-b', '--body', required=False, type=click.File('rb'))
     @click.option('-e', '--encode', default=Encoding.URL, type=utils.EnumType(Encoding))
-    @click.option('-f', '--fast-mode', type=bool, default=False, show_default=True)
+    @click.option('-f', '--fast-mode', is_flag=True, type=bool, default=False, show_default=True)
     @click.option('-c', '--concurrency', type=int, default=10, show_default=True)
     @click.option('-ts', '--true-string', required=False, type=utils.NegatableString(),
                   help="Interpret this string in the response body as being a truthful request. Negate with '!'")
