@@ -72,7 +72,7 @@ retrieval. These flags let you force enable or disable these features.
 
 #### `--oob`
 
-Enables the `oob` server. For more info see [the oob server documentation.](oob.md)
+Enables the `oob` server. For more info see [the oob server documentation.](oob-server.md)
 
 **Example:** `xcat run ... --oob=$EXTERNAL_IP:$EXTERNAL_PORT`
 
@@ -129,7 +129,7 @@ $ xcat run http://localhost:4567/ query query=Rogue --true-string=Lawyer
 # shell
 
 This is one of the most powerful features of xcat. 
-Please see [the dedicated `shell` documentation here](shell.md)
+Please see [the dedicated `shell` documentation here](the-shell.md)
 
 
 # injections
