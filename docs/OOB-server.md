@@ -19,6 +19,9 @@ To enable this feature simply pass the `--oob` flag to any xcat command.
 The `--oob` flag should in a `host:port` format, and it is up to you to find a combination that works. 
 To test this combination run `xcat detect` and check that the `oob-http` feature is enabled.
 
+This can also be used to perform automated XXE attacks, however this functionality is currently not 
+fully working.
+
 ## Demo
 
 This shows xcat connecting to a local server and using the `--oob` flag to retrieve the document much 
