@@ -16,6 +16,9 @@ import contextlib
 import functools
 from typing import List, Tuple
 import asyncio
+import os
+import sys
+import inspect
 
 import click
 
@@ -55,13 +58,14 @@ def attack_options(func):
                   help='Force disable features')
     @click.option('--oob', required=False,
                   help='IP:port to listen on for OOB attacks. This enables the OOB server.')
+    @click.option('--tamper', required=False, type=click.Path(), help='Path to a script to tamper requests')
     @click.argument('url')
     @click.argument('target_parameter')
     @click.argument('parameters', nargs=-1, type=utils.DictParameters())
     @click.pass_context
     @functools.wraps(func)
     def wrapper(ctx, url, target_parameter, parameters, concurrency, fast, body, headers, method,
-                encode, true_string, true_code, enable, disable, oob, **kwargs):
+                encode, true_string, true_code, enable, disable, oob, tamper, **kwargs):
         if body and encode != 'url':
             ctx.fail('Can only use --body with url encoding')
 
@@ -78,6 +82,23 @@ def attack_options(func):
         if body:
             body_bytes = body.read()
 
+        tamper_function = None
+        if tamper:
+            if not tamper.endswith('.py'):
+                ctx.fail('--tamper must be a path to a Python script')
+
+            dirname = os.path.dirname(tamper)
+            sys.path.append(dirname)
+            basename = os.path.basename(tamper)
+            try:
+                module = __import__(basename[:-3])
+            except:
+                ctx.fail(f'failed to import tamper script: {tamper}')
+            for name, member in inspect.getmembers(module, inspect.isfunction):
+                if name == "tamper":
+                    tamper_function = member
+                    break
+
         context = AttackContext(
             url=url,
             method=method,
@@ -89,7 +110,8 @@ def attack_options(func):
             body=body_bytes,
             headers=headers,
             encoding=encode,
-            oob_details=oob
+            oob_details=oob,
+            tamper_function=tamper_function
         )
 
         if enable:
