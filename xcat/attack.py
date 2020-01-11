@@ -44,6 +44,7 @@ class AttackContext(NamedTuple):
     headers: Dict[str, str]
     encoding: Encoding
     oob_details: str
+    tamper_function: Callable[[], None]
 
     session: ClientSession = None
     features: Dict[str, bool] = defaultdict(bool)
@@ -107,6 +108,8 @@ async def check(context: AttackContext, payload: str):
         args = {'params': parameters, 'data': context.body}
     else:
         args = {'data': parameters}
+    if context.tamper_function:
+        context.tamper_function(context, args)
 
     async with context.semaphore:
         async with context.session.request(context.method, context.url, **args) as resp:
