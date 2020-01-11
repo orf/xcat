@@ -14,11 +14,11 @@ Options:
 """
 import contextlib
 import functools
+import importlib
 from typing import List, Tuple
 import asyncio
 import os
 import sys
-import inspect
 
 import click
 
@@ -91,13 +91,14 @@ def attack_options(func):
             sys.path.append(dirname)
             basename = os.path.basename(tamper)
             try:
-                module = __import__(basename[:-3])
+                module = importlib.import_module(basename[:-3])
             except:
                 ctx.fail(f'failed to import tamper script: {tamper}')
-            for name, member in inspect.getmembers(module, inspect.isfunction):
-                if name == "tamper":
-                    tamper_function = member
-                    break
+            tamper_function = getattr(module, "tamper")
+            if tamper_function is None:
+                ctx.fail(f'no attribute called "tamper" found in {tamper}')
+            elif not callable(tamper_function):
+                ctx.fail(f'"tamper" attribute in {tamper} is not callable')
 
         context = AttackContext(
             url=url,
