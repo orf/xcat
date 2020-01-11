@@ -9,7 +9,6 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
-from prompt_toolkit.eventloop.defaults import use_asyncio_event_loop
 from prompt_toolkit.styles import Style
 from xpath import func, E
 
@@ -270,7 +269,6 @@ class Help(BaseCommand):
 
 
 async def shell_loop(context: AttackContext):
-    use_asyncio_event_loop()
     history_dir = Path(appdirs.user_data_dir('python-xcat'))
     if not history_dir.exists():
         history_dir.mkdir(parents=True)
@@ -298,13 +296,12 @@ async def shell_loop(context: AttackContext):
     })
 
     while True:
-        user_input = await session.prompt(
+        user_input = await session.prompt_async(
             [
                 ('class:prompt', 'XCat'),
                 ('class:dollar', '$ ')
             ],
             style=style,
-            async_=True,
             completer=completer,
             auto_suggest=AutoSuggestFromHistory()
         )
