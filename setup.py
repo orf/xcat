@@ -24,12 +24,6 @@ setup(name="xcat",
           'click',
           'appdirs',
       ],
-      python_requires='>=3.7',
-      entry_points={
-          'console_scripts': [
-              'xcat = xcat.cli:cli',
-          ]
-      },
       description="A command line tool to automate the exploitation of blind XPath injection vulnerabilities",
       long_description=readme,
       long_description_content_type='text/markdown',

@@ -1,0 +1,48 @@
+name: Python package
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8]
+
+    container:
+      image: python:3.7
+      options: --network-alias testHost
+
+    services:
+      # Label used to access the service container
+      xcat-app:
+        image: tomforbes/xcat-app
+        ports:
+          - 4567:4567
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '10.x'
+
+    - name: Setting up BATS
+      run: npm install -g bats
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - uses: dschep/install-poetry-action@v1.3
+
+    - name: Test
+      run: |
+        poetry install
+        poetry run xcat -- detect "${TEST_URL}" query xversion=3.0 query=Rogue --true-string=Lawyer --oob=${OOB_HOST}
+        bats test.sh
+      env:
+        TEST_URL: http://xcat-app:4567/
+        OOB_HOST: testHost:8000
