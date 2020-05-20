@@ -5,6 +5,7 @@
 ![](https://img.shields.io/pypi/l/xcat.svg)
 ![](https://img.shields.io/pypi/pyversions/xcat.svg)
 [![Rawsec's CyberSecurity Inventory](https://inventory.rawsec.ml/img/badges/Rawsec-inventoried-FF5050_flat.svg)](https://inventory.rawsec.ml/)
+[![](https://images.microbadger.com/badges/image/tomforbes/xcat.svg)](https://microbadger.com/images/tomforbes/xcat "Get your own image badge on microbadger.com")
 
 XCat is a command line tool to exploit and investigate blind XPath injection vulnerabilities.
 
