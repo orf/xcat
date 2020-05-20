@@ -37,6 +37,8 @@ It supports an large number of features:
 
 Run `pip install xcat`
 
+Or using docker: `docker run -it tomforbes/xcat --help`
+
 **Requires Python 3.7**. You can easily install this with [pyenv](https://github.com/pyenv/pyenv):
 `pyenv install 3.7.1`
 
