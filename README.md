@@ -40,6 +40,8 @@ Run `pip install xcat`
 
 Or using docker: `docker run -it tomforbes/xcat --help`
 
+Or on fedora, `dnf install xcat` 😎
+
 **Requires Python 3.7**. You can easily install this with [pyenv](https://github.com/pyenv/pyenv):
 `pyenv install 3.7.1`
 
