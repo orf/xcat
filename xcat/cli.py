@@ -1,17 +1,3 @@
-"""
-XCat.
-
-Usage:
-    xcat <url> <target_parameter> [<parameters>]... (--true-string=<string> | --true-code=<code>) [--method=<method>]
-         [--fast] [--oob-ip=<ip> (--oob-port=<port>)] [--stats] [--concurrency=<val>]
-         [--features] [--body] [--cookie=<cookie>] [(--shell | --shellcmd=<cmd>)]
-    xcat detectip
-
-Options:
-    -o, --oob-ip=<ip>           Use this IP for OOB injection attacks
-    -p, --oob-port=<port>       Use this port for injection attacks
-    --stats                     Print statistics at the end of the session
-"""
 import contextlib
 import functools
 import importlib
@@ -31,6 +17,7 @@ from xcat.shell import shell_loop
 
 
 @click.group()
+@click.version_option()
 def cli():
     pass
 
