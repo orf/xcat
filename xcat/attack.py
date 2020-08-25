@@ -64,7 +64,7 @@ class AttackContext(NamedTuple):
 
         semaphore = BoundedSemaphore(self.concurrency)
         connector = TCPConnector(ssl=False, limit=None)
-        async with ClientSession(headers=self.headers, connector=connector) as sesh:
+        async with ClientSession(headers=self.headers, connector=connector, trust_env = True) as sesh:
             yield self._replace(session=sesh, injection=injection, semaphore=semaphore)
 
     @asynccontextmanager
