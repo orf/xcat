@@ -36,7 +36,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
 
-    - uses: dschep/install-poetry-action@v1.3
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.1.2
 
     - name: Test
       run: |
